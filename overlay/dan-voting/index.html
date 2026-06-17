@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>osu!mania Dan Voting</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  width: 420px;
+  min-height: 100px;
+  font-size: 13px;
+  overflow-y: auto;
+  user-select: none;
+}
+
+#app { padding: 12px; }
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.header .title { font-size: 14px; font-weight: 700; color: #ff66aa; }
+.header .status { font-size: 11px; color: #888; }
+.header .user-info { font-size: 11px; color: #aaa; }
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: #ccc;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s;
+}
+.btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: #ff66aa;
+  border-color: #ff66aa;
+  color: #fff;
+  font-weight: 600;
+}
+.btn-primary:hover { background: #ff4488; }
+.btn-primary:disabled { opacity: 0.4; }
+.btn-login {
+  background: rgba(255,102,170,0.2);
+  border-color: #ff66aa;
+  color: #ff66aa;
+  font-size: 11px;
+}
+
+/* Beatmap Info */
+.beatmap-card {
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.beatmap-card .song-title { font-size: 14px; font-weight: 600; color: #fff; }
+.beatmap-card .song-version { color: #ff66aa; font-weight: 500; }
+.beatmap-card .song-meta { font-size: 11px; color: #999; margin-top: 3px; }
+.beatmap-card .song-link {
+  display: inline-block;
+  font-size: 10px;
+  color: #66aaff;
+  margin-top: 3px;
+  text-decoration: none;
+}
+.beatmap-card .song-link:hover { text-decoration: underline; }
+
+/* Dan Grid */
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.dan-grid { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 4px; }
+.dan-btn {
+  padding: 4px 7px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 3px;
+  background: rgba(255,255,255,0.03);
+  color: #bbb;
+  cursor: pointer;
+  font-size: 11px;
+  min-width: 30px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.dan-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.dan-btn.selected {
+  background: rgba(255,102,170,0.3);
+  border-color: #ff66aa;
+  color: #ff66aa;
+  font-weight: 600;
+}
+
+/* Tier Selector */
+.tier-group { display: flex; gap: 3px; margin-bottom: 8px; }
+.tier-btn {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 3px;
+  background: rgba(255,255,255,0.03);
+  color: #bbb;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: center;
+  transition: all 0.15s;
+  text-transform: capitalize;
+}
+.tier-btn:hover { background: rgba(255,255,255,0.1); }
+.tier-btn.selected.low  { background: rgba(249,115,22,0.3);  border-color: #f97316; color: #f97316; }
+.tier-btn.selected.mid  { background: rgba(234,179,8,0.3);   border-color: #eab308; color: #eab308; }
+.tier-btn.selected.high { background: rgba(239,68,68,0.3);   border-color: #ef4444; color: #ef4444; }
+
+.submit-btn {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* Results */
+.results-section { margin-top: 4px; }
+.result-row {
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+}
+.result-dan { font-size: 11px; font-weight: 600; color: #ddd; margin-bottom: 2px; }
+.result-bar-group { display: flex; flex-direction: column; gap: 1px; }
+.result-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+.result-bar-label { width: 30px; text-align: right; color: #999; text-transform: capitalize; }
+.result-bar-track { flex: 1; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; }
+.result-bar-fill { height: 100%; border-radius: 5px; transition: width 0.3s ease; }
+.result-bar-fill.low  { background: #f97316; }
+.result-bar-fill.mid  { background: #eab308; }
+.result-bar-fill.high { background: #ef4444; }
+.result-bar-pct { width: 32px; text-align: right; font-size: 10px; color: #aaa; }
+
+/* Messages */
+.message { text-align: center; padding: 20px; color: #888; font-size: 12px; }
+.message.error { color: #ef4444; }
+.message.warn { color: #eab308; }
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #ff66aa;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Login overlay */
+.login-prompt {
+  text-align: center;
+  padding: 12px;
+  background: rgba(255,102,170,0.1);
+  border: 1px dashed rgba(255,102,170,0.3);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ==================== CONFIG ====================
+const API_BASE = 'https://YOUR_VERCEL_APP.vercel.app';  // <-- CHANGE THIS
+const TOSU_WS = 'ws://127.0.0.1:24050/websocket/v2';
+
+const DAN_LEVELS = [
+  '1','2','3','4','5','6','7',
+  '8','9','10','α','β','γ',
+  'δ','ε','ζ','η'
+];
+
+const DAN_LABELS = {
+  '1':'1st Dan','2':'2nd Dan','3':'3rd Dan','4':'4th Dan','5':'5th Dan',
+  '6':'6th Dan','7':'7th Dan','8':'8th Dan','9':'9th Dan','10':'10th Dan',
+  'α':'α','β':'β','γ':'γ','δ':'δ','ε':'ε',
+  'ζ':'ζ (Emilk)','η':'η (Thaumiel)'
+};
+
+const TIERS = ['low', 'mid', 'high'];
+
+// ==================== STATE ====================
+const state = {
+  appState: 'INIT',          // INIT | NOT_CONNECTED | LOGGED_OUT | WAITING | BEATMAP_LOADED | VOTE_SUBMITTING | ERROR
+  beatmap: null,             // current beatmap data from tosu
+  voteData: null,            // from API: { beatmap, distribution, user_vote }
+  selectedDan: null,
+  selectedTier: null,
+  user: null,                // from API: { id, osu_id, username, avatar_url, is_admin }
+  token: null,               // JWT
+  ws: null,
+  reconnectAttempts: 0,
+  lastBeatmapId: null,
+};
+
+// ==================== DOM ====================
+const app = document.getElementById('app');
+let loginWindow = null;
+
+function render() {
+  const s = state;
+
+  if (s.appState === 'NOT_CONNECTED') {
+    app.innerHTML = `<div class="message"><div class="spinner"></div> Connecting to tosu...</div>`;
+    return;
+  }
+
+  // Header
+  let headerRight = '';
+  if (s.user) {
+    headerRight = `<span class="user-info">${s.user.username} | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
+  } else if (s.token) {
+    headerRight = `<span class="user-info">Loading... | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
+  } else {
+    headerRight = `<button class="btn btn-login" onclick="login()">Login with osu!</button>`;
+  }
+
+  let html = `
+<div class="header">
+  <span class="title">Dan Voting</span>
+  <div>${headerRight}</div>
+</div>`;
+
+  // Beatmap info
+  if (s.beatmap) {
+    const bm = s.beatmap;
+    html += `
+<div class="beatmap-card">
+  <div class="song-title">${esc(bm.artist)} - ${esc(bm.title)}</div>
+  <div class="song-version">[${esc(bm.version)}]</div>
+  <div class="song-meta">Beatmapset #${bm.set} • mapped by ${esc(bm.creator)}</div>
+  <a class="song-link" href="https://osu.ppy.sh/beatmapsets/${bm.set}#mania/${bm.id}" target="_blank">View on osu.ppy.sh →</a>
+</div>`;
+  } else if (s.appState === 'WAITING') {
+    html += `<div class="message">Waiting for beatmap...<br><span style="font-size:10px;color:#666">Select a song to begin</span></div>`;
+  } else {
+    html += `<div class="message">Loading...</div>`;
+  }
+
+  // Voting panel (only shown when beatmap is loaded and user is logged in)
+  if (s.beatmap && s.user) {
+    html += `<div class="section-title">Your Vote</div>`;
+
+    // Dan grid - row 1: 1-7
+    html += `<div class="dan-grid">`;
+    DAN_LEVELS.slice(0, 7).forEach(dl => {
+      const sel = s.selectedDan === dl ? ' selected' : '';
+      html += `<button class="dan-btn${sel}" onclick="selectDan('${dl}')">${dl}</button>`;
+    });
+    html += `</div>`;
+    // Dan grid - row 2: 8-10 + α-γ
+    html += `<div class="dan-grid">`;
+    DAN_LEVELS.slice(7, 13).forEach(dl => {
+      const sel = s.selectedDan === dl ? ' selected' : '';
+      html += `<button class="dan-btn${sel}" onclick="selectDan('${dl}')">${dl}</button>`;
+    });
+    html += `</div>`;
+    // Dan grid - row 3: δ-η
+    html += `<div class="dan-grid">`;
+    DAN_LEVELS.slice(13).forEach(dl => {
+      const sel = s.selectedDan === dl ? ' selected' : '';
+      const label = dl === 'ζ' ? 'ζ(E)' : dl === 'η' ? 'η(Th)' : dl;
+      html += `<button class="dan-btn${sel}" onclick="selectDan('${dl}')">${label}</button>`;
+    });
+    html += `</div>`;
+
+    // Tier selector
+    html += `<div class="tier-group">`;
+    TIERS.forEach(t => {
+      const sel = s.selectedTier === t ? ` selected ${t}` : '';
+      html += `<button class="tier-btn${sel}" onclick="selectTier('${t}')">${t}</button>`;
+    });
+    html += `</div>`;
+
+    const canSubmit = s.selectedDan && s.selectedTier && s.appState !== 'VOTE_SUBMITTING';
+    const submitText = s.appState === 'VOTE_SUBMITTING'
+      ? '<span class="spinner"></span> Submitting...'
+      : 'Submit Vote';
+    html += `<button class="btn btn-primary submit-btn" ${canSubmit ? '' : 'disabled'} onclick="submitVote()">${submitText}</button>`;
+  } else if (s.beatmap && !s.user) {
+    html += `<div class="login-prompt">Login with osu! to vote<br><button class="btn btn-login" style="margin-top:6px" onclick="login()">Login with osu!</button></div>`;
+  }
+
+  // Results section
+  if (s.voteData && s.voteData.distribution && Object.keys(s.voteData.distribution).length > 0) {
+    const dist = s.voteData.distribution;
+    const total = s.voteData.beatmap.total_votes;
+    html += `<div class="section-title">Results (${total} vote${total !== 1 ? 's' : ''})</div>`;
+    html += `<div class="results-section">`;
+
+    for (const [dan, tiers] of Object.entries(dist)) {
+      const danTotal = tiers.low + tiers.mid + tiers.high;
+      const label = DAN_LABELS[dan] || dan;
+      const isUserVote = s.voteData.user_vote && s.voteData.user_vote.dan_level === dan;
+
+      let danLabel = isUserVote ? `★ ${label}` : label;
+      html += `<div class="result-row">
+        <div class="result-dan">${danLabel}</div>
+        <div class="result-bar-group">`;
+
+      for (const tier of TIERS) {
+        const count = tiers[tier];
+        const pct = danTotal > 0 ? Math.round(count / danTotal * 100) : 0;
+        html += `
+          <div class="result-bar-row">
+            <span class="result-bar-label">${tier}</span>
+            <div class="result-bar-track">
+              <div class="result-bar-fill ${tier}" style="width:${pct}%"></div>
+            </div>
+            <span class="result-bar-pct">${pct}%</span>
+          </div>`;
+      }
+
+      html += `</div></div>`;
+    }
+    html += `</div>`;
+  } else if (s.beatmap) {
+    html += `<div class="section-title">Results</div><div class="message">No votes yet — be the first!</div>`;
+  }
+
+  html += `<div style="height:20px"></div>`;
+  app.innerHTML = html;
+}
+
+function esc(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ==================== WEBSOCKET ====================
+function connectWS() {
+  if (state.ws) {
+    try { state.ws.close(); } catch(e) {}
+  }
+
+  try {
+    state.ws = new WebSocket(TOSU_WS);
+  } catch(e) {
+    state.appState = 'NOT_CONNECTED';
+    render();
+    scheduleReconnect();
+    return;
+  }
+
+  state.ws.onopen = () => {
+    console.log('[WS] Connected to tosu');
+    state.reconnectAttempts = 0;
+    if (state.appState === 'NOT_CONNECTED') {
+      state.appState = state.user ? 'WAITING' : 'LOGGED_OUT';
+    }
+    // Apply filters for only needed data
+    state.ws.send(JSON.stringify({
+      applyFilters: [{
+        field: 'beatmap',
+        keys: ['id','set','artist','title','version','creator','mode','status']
+      }]
+    }));
+    render();
+  };
+
+  state.ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.beatmap) {
+        handleBeatmapData(data.beatmap);
+      }
+    } catch(e) {}
+  };
+
+  state.ws.onclose = () => {
+    console.log('[WS] Disconnected');
+    state.ws = null;
+    scheduleReconnect();
+  };
+
+  state.ws.onerror = () => {
+    // onclose will fire after this
+  };
+}
+
+function scheduleReconnect() {
+  const delay = Math.min(1000 * Math.pow(2, state.reconnectAttempts), 30000);
+  state.reconnectAttempts++;
+  state.appState = 'NOT_CONNECTED';
+  render();
+  setTimeout(connectWS, delay);
+}
+
+function handleBeatmapData(bm) {
+  // Only process mania beatmaps
+  if (bm.mode !== 3) {
+    if (state.beatmap) {
+      state.beatmap = null;
+      state.voteData = null;
+      state.selectedDan = null;
+      state.selectedTier = null;
+      state.appState = 'WAITING';
+      render();
+    }
+    return;
+  }
+
+  if (!bm.id || bm.id === state.lastBeatmapId) return;
+
+  state.lastBeatmapId = bm.id;
+  state.beatmap = bm;
+  state.voteData = null;
+  state.selectedDan = null;
+  state.selectedTier = null;
+  state.appState = state.user ? 'BEATMAP_LOADED' : 'LOGGED_OUT';
+  render();
+
+  // Fetch vote data for this beatmap
+  fetchVoteData(bm.id);
+}
+
+// ==================== API ====================
+async function apiGet(path) {
+  const headers = {};
+  if (state.token) {
+    headers['Authorization'] = `Bearer ${state.token}`;
+  }
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { headers });
+    return { status: res.status, data: await res.json() };
+  } catch(err) {
+    console.error('API error:', err);
+    return { status: 0, data: { error: 'Network error' } };
+  }
+}
+
+async function apiPost(path, body) {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (state.token) {
+    headers['Authorization'] = `Bearer ${state.token}`;
+  }
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, data: await res.json() };
+  } catch(err) {
+    console.error('API error:', err);
+    return { status: 0, data: { error: 'Network error' } };
+  }
+}
+
+async function fetchVoteData(beatmapId) {
+  const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}`);
+  if (status === 200) {
+    state.voteData = data;
+    // Pre-select user's previous vote
+    if (data.user_vote) {
+      state.selectedDan = data.user_vote.dan_level;
+      state.selectedTier = data.user_vote.tier;
+    }
+    render();
+  }
+}
+
+async function fetchUserInfo() {
+  const { status, data } = await apiGet('/api/auth/me');
+  if (status === 200) {
+    state.user = data;
+    state.appState = state.beatmap ? 'BEATMAP_LOADED' : 'WAITING';
+  } else {
+    // Token expired or invalid
+    localStorage.removeItem('dan_voting_token');
+    state.token = null;
+    state.user = null;
+    state.appState = state.beatmap ? 'LOGGED_OUT' : 'WAITING';
+  }
+  render();
+}
+
+async function submitVote() {
+  if (!state.selectedDan || !state.selectedTier || !state.beatmap) return;
+
+  state.appState = 'VOTE_SUBMITTING';
+  render();
+
+  const bm = state.beatmap;
+  const { status, data } = await apiPost('/api/votes', {
+    osu_beatmap_id: bm.id,
+    beatmapset_id: bm.set,
+    artist: bm.artist,
+    title: bm.title,
+    version: bm.version,
+    creator: bm.creator,
+    dan_level: state.selectedDan,
+    tier: state.selectedTier,
+  });
+
+  if (status === 200) {
+    state.voteData = data.results;
+    state.appState = 'BEATMAP_LOADED';
+  } else {
+    console.error('Vote failed:', data.error);
+    state.appState = 'BEATMAP_LOADED';
+  }
+  render();
+}
+
+// ==================== AUTH ====================
+function login() {
+  const width = 600;
+  const height = 700;
+  const left = (screen.width - width) / 2;
+  const top = (screen.height - height) / 2;
+  const url = `${API_BASE}/api/auth/login?redirect=overlay`;
+
+  loginWindow = window.open(
+    url,
+    'osu_login',
+    `width=${width},height=${height},left=${left},top=${top}`
+  );
+
+  if (!loginWindow) {
+    alert('Please allow popups for login to work.');
+  }
+}
+
+// Listen for postMessage from OAuth callback
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'osu_auth') {
+    const { token, user } = event.data;
+    state.token = token;
+    state.user = user;
+    state.appState = state.beatmap ? 'BEATMAP_LOADED' : 'WAITING';
+    localStorage.setItem('dan_voting_token', token);
+    if (loginWindow) {
+      loginWindow.close();
+      loginWindow = null;
+    }
+    render();
+
+    // Re-fetch vote data with auth
+    if (state.beatmap) {
+      fetchVoteData(state.beatmap.id);
+    }
+  }
+});
+
+function logout() {
+  state.token = null;
+  state.user = null;
+  state.voteData = null;
+  state.selectedDan = null;
+  state.selectedTier = null;
+  state.appState = state.beatmap ? 'LOGGED_OUT' : 'WAITING';
+  localStorage.removeItem('dan_voting_token');
+  render();
+
+  // Re-fetch without auth
+  if (state.beatmap) {
+    fetchVoteData(state.beatmap.id);
+  }
+}
+
+function selectDan(dan) {
+  state.selectedDan = state.selectedDan === dan ? null : dan;
+  render();
+}
+
+function selectTier(tier) {
+  state.selectedTier = state.selectedTier === tier ? null : tier;
+  render();
+}
+
+// ==================== INIT ====================
+function init() {
+  // Restore token
+  const savedToken = localStorage.getItem('dan_voting_token');
+  if (savedToken) {
+    state.token = savedToken;
+  }
+
+  // Connect to tosu
+  connectWS();
+
+  // Fetch user info if token exists
+  if (state.token) {
+    fetchUserInfo();
+  }
+
+  // Initial render
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
