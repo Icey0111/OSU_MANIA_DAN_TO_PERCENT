@@ -510,7 +510,7 @@ async function apiPost(path, body) {
 }
 
 async function fetchVoteData(beatmapId) {
-  const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}`);
+  const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}?_t=${Date.now()}`);
   if (status === 200) {
     state.voteData = data;
     state.lastError = null;
@@ -575,9 +575,11 @@ async function submitVote() {
   });
 
   if (status === 200) {
-    state.voteData = data.results;
     state.lastError = null;
     state.appState = 'BEATMAP_LOADED';
+    // Re-fetch from GET to get authoritative data (includes user_vote)
+    fetchVoteData(bm.id);
+    return; // fetchVoteData will call render()
   } else {
     state.lastError = `Vote failed (${status}): ${data.error || 'unknown'}`;
     console.error('Vote failed:', data.error);
