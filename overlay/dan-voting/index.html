@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>osu!mania Dan Voting</title>
-<!-- v5: preserve user_vote during polling -->
+<!-- v6: caller tracing for fetchVoteData -->
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -472,7 +472,7 @@ function handleBeatmapData(bm) {
   render();
 
   // Fetch vote data for this beatmap, then start auto-polling
-  fetchVoteData(bm.id);
+  fetchVoteData(bm.id, false, 'beatmap');
   startPolling();
 }
 
@@ -521,23 +521,23 @@ async function apiPost(path, body) {
 
 // keepSelection=true: only update distribution/beatmap, preserve user_vote AND selection
 // keepSelection=false: full sync including user_vote + selectedDan/selectedTier (initial load)
-async function fetchVoteData(beatmapId, keepSelection = false) {
-  console.log(`[fetchVoteData] beatmap=${beatmapId} keepSelection=${keepSelection} selectedDan=${state.selectedDan}`);
+async function fetchVoteData(beatmapId, keepSelection = false, caller = 'unknown') {
+  console.log(`[fetchVoteData] caller=${caller} beatmap=${beatmapId} keepSelection=${keepSelection} selectedDan=${state.selectedDan}`);
   const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}?_t=${Date.now()}`);
   if (status === 200) {
     state.lastError = null;
-    console.log(`[fetchVoteData] GET ok user_vote=${JSON.stringify(data.user_vote)} keepSelection=${keepSelection}`);
+    console.log(`[fetchVoteData] ${caller} GET ok user_vote=${JSON.stringify(data.user_vote)}`);
     if (!keepSelection) {
       // Full sync: overwrite everything from server
       state.voteData = data;
       if (data.user_vote) {
-        console.log(`[fetchVoteData] OVERWRITING selectedDan: ${state.selectedDan} -> ${data.user_vote.dan_level}`);
+        console.log(`[fetchVoteData] ${caller} OVERWRITING selectedDan: ${state.selectedDan} -> ${data.user_vote.dan_level}`);
         state.selectedDan = data.user_vote.dan_level;
         state.selectedTier = data.user_vote.tier;
       }
     } else {
       // Polling: only update distribution bars and beatmap info, preserve user_vote and selection
-      console.log(`[fetchVoteData] keepSelection=TRUE, preserving selectedDan=${state.selectedDan} user_vote=${JSON.stringify(state.voteData?.user_vote)}`);
+      console.log(`[fetchVoteData] ${caller} keepSelection=TRUE, preserving selectedDan=${state.selectedDan} user_vote=${JSON.stringify(state.voteData?.user_vote)}`);
       if (!state.voteData) state.voteData = {};
       state.voteData.beatmap = data.beatmap;
       state.voteData.distribution = data.distribution;
@@ -555,7 +555,7 @@ function startPolling() {
   state.pollTimer = setInterval(() => {
     if (state.beatmap && state.appState !== 'VOTE_SUBMITTING') {
       console.log(`[poll] tick appState=${state.appState}`);
-      fetchVoteData(state.beatmap.id, true);
+      fetchVoteData(state.beatmap.id, true, 'poll');
     } else {
       console.log(`[poll] SKIP beatmap=${!!state.beatmap} appState=${state.appState}`);
     }
@@ -657,7 +657,7 @@ window.addEventListener('message', (event) => {
 
     // Re-fetch vote data with auth
     if (state.beatmap) {
-      fetchVoteData(state.beatmap.id);
+      fetchVoteData(state.beatmap.id, false, 'login');
     }
   }
 });
@@ -674,7 +674,7 @@ function logout() {
 
   // Re-fetch without auth
   if (state.beatmap) {
-    fetchVoteData(state.beatmap.id);
+    fetchVoteData(state.beatmap.id, false, 'logout');
   }
 }
 
