@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { buildAuthUrl, generatePKCE } from "@/lib/osu";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
+import crypto from "crypto";
 
 export async function GET(request: NextRequest) {
   const corsResponse = handleCors(request);
@@ -11,18 +12,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const redirect = searchParams.get("redirect") || "admin";
 
-    // Generate PKCE and state
+    // Generate PKCE and state (Node.js native crypto)
     const { verifier, challenge } = await generatePKCE();
-    const stateBytes = new Uint8Array(32);
-    crypto.getRandomValues(stateBytes);
-    let stateBinary = "";
-    for (let i = 0; i < stateBytes.length; i++) {
-      stateBinary += String.fromCharCode(stateBytes[i]);
-    }
-    const stateStr = btoa(stateBinary)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=/g, "");
+    const stateStr = crypto.randomBytes(32).toString("base64url");
 
     // Store redirect info in state
     const state = `${stateStr}:${redirect}`;

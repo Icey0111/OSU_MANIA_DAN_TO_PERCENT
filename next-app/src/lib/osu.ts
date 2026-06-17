@@ -1,4 +1,5 @@
 // osu! OAuth v2 helpers
+import crypto from "crypto";
 
 export interface OsuTokens {
   access_token: string;
@@ -30,33 +31,16 @@ function getRedirectUri(): string {
   return uri;
 }
 
-// === PKCE Helpers ===
-
-function base64UrlEncode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
-}
+// === PKCE Helpers (Node.js native crypto) ===
 
 export async function generatePKCE(): Promise<{
   verifier: string;
   challenge: string;
 }> {
-  const verifierBytes = new Uint8Array(64);
-  crypto.getRandomValues(verifierBytes);
-  const verifier = base64UrlEncode(verifierBytes.buffer);
+  const verifier = crypto.randomBytes(64).toString("base64url");
 
-  const challengeBytes = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(verifier)
-  );
-  const challenge = base64UrlEncode(challengeBytes);
+  const hash = crypto.createHash("sha256").update(verifier).digest();
+  const challenge = hash.toString("base64url");
 
   return { verifier, challenge };
 }
