@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       "Set-Cookie",
       `pkce_verifier=${verifier}; Path=/api/auth/callback; HttpOnly; SameSite=Lax; Max-Age=600`
     );
-    response.headers.set(
+    response.headers.append(
       "Set-Cookie",
       `oauth_redirect=${redirect}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`
     );
