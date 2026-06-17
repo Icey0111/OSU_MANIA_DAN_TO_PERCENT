@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, extractBearerToken } from "@/lib/auth";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
-import { getSupabase } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 import { isValidDanLevel, isValidTier, DAN_ORDER } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const db = getSupabase();
+  const db = getSupabaseAdmin();
 
   // 1. Upsert beatmap record
   const { data: beatmap, error: beatmapError } = await db

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sync-overlay": "node ../scripts/sync-overlay.js",
+    "sync-overlay:watch": "node ../scripts/sync-overlay.js --watch"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
