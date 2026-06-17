@@ -22,8 +22,11 @@ export async function GET(request: NextRequest) {
     // Build osu! OAuth URL
     const authUrl = buildAuthUrl(challenge, state);
 
-    // Set PKCE verifier in a short-lived cookie (used in callback)
-    const response = Response.redirect(authUrl);
+    // Use new Response() instead of Response.redirect() to allow setting cookies
+    const response = new Response(null, {
+      status: 302,
+      headers: { Location: authUrl },
+    });
     response.headers.set(
       "Set-Cookie",
       `pkce_verifier=${verifier}; Path=/api/auth/callback; HttpOnly; SameSite=Lax; Max-Age=600`
