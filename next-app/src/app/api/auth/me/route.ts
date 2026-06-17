@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, extractBearerToken } from "@/lib/auth";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
-import { getSupabase } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const corsResponse = handleCors(request);
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Optionally refresh user data from DB
-  const db = getSupabase();
+  const db = getSupabaseAdmin();
   const { data: user } = await db
     .from("users")
     .select("id, osu_id, osu_username, avatar_url, is_admin")

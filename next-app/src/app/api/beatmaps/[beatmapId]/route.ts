@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, extractBearerToken } from "@/lib/auth";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
-import { getSupabase } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 import { DAN_ORDER } from "@/lib/validation";
 
 export async function GET(
@@ -19,7 +19,7 @@ export async function GET(
     );
   }
 
-  const db = getSupabase();
+  const db = getSupabaseAdmin();
 
   // Lookup beatmap
   const { data: beatmap, error: beatmapError } = await db
