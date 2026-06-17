@@ -145,7 +145,8 @@ export async function GET(request: NextRequest) {
     response.cookies.set("token", token, {
       path: "/",
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none",
+      secure: true,
       maxAge: 60 * 60 * 24 * 30,
     });
     response.cookies.set("pkce_verifier", "", {
