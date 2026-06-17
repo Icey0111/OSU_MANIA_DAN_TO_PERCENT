@@ -1,4 +1,5 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { buildAuthUrl, generatePKCE } from "@/lib/osu";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import crypto from "crypto";
@@ -22,20 +23,23 @@ export async function GET(request: NextRequest) {
     // Build osu! OAuth URL
     const authUrl = buildAuthUrl(challenge, state);
 
-    // Use new Response() instead of Response.redirect() to allow setting cookies
-    const response = new Response(null, {
-      status: 302,
-      headers: { Location: authUrl },
+    // Set cookies using Next.js cookies() API
+    const cookieStore = await cookies();
+    cookieStore.set("pkce_verifier", verifier, {
+      path: "/api/auth/callback",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 600,
     });
-    response.headers.set(
-      "Set-Cookie",
-      `pkce_verifier=${verifier}; Path=/api/auth/callback; HttpOnly; SameSite=Lax; Max-Age=600`
-    );
-    response.headers.append(
-      "Set-Cookie",
-      `oauth_redirect=${redirect}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`
-    );
+    cookieStore.set("oauth_redirect", redirect, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 600,
+    });
 
+    // Redirect to osu! OAuth
+    const response = NextResponse.redirect(authUrl);
     return applyCorsHeaders(response);
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

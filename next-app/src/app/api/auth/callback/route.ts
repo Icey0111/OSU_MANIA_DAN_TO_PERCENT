@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { exchangeCode, getOsuUser } from "@/lib/osu";
 import { signToken } from "@/lib/auth";
 import { getSupabase } from "@/lib/db";
@@ -22,18 +23,18 @@ export async function GET(request: NextRequest) {
   const stateParts = state?.split(":") || [];
   const redirect = stateParts.length > 1 ? stateParts[1] : "admin";
 
-  // Get PKCE verifier from cookie
-  const cookieHeader = request.headers.get("Cookie") || "";
-  const verifierMatch = cookieHeader.match(/pkce_verifier=([^;]+)/);
-  const verifier = verifierMatch ? verifierMatch[1] : null;
+  // Get PKCE verifier from cookie using Next.js cookies() API
+  const cookieStore = await cookies();
+  const verifier = cookieStore.get("pkce_verifier")?.value;
 
   if (!verifier) {
+    const hasAnyCookies = cookieStore.getAll().length > 0;
     return applyCorsHeaders(
       NextResponse.json({
         error: "Missing PKCE verifier",
         debug: {
-          hasCookie: cookieHeader.length > 0,
-          cookieLen: cookieHeader.length,
+          hasCookie: hasAnyCookies,
+          cookieCount: cookieStore.getAll().length,
           hasCode: !!code,
         },
       }, { status: 400 })
@@ -108,18 +109,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Admin flow: set cookie and redirect to admin
-    const response = NextResponse.redirect(new URL("/admin", request.url));
-    response.headers.set(
-      "Set-Cookie",
-      `token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`
-    );
-    // Clear PKCE verifier
-    response.headers.append(
-      "Set-Cookie",
-      "pkce_verifier=; Path=/api/auth/callback; HttpOnly; SameSite=Lax; Max-Age=0"
-    );
+    // Admin flow: set JWT token cookie and clear PKCE verifier
+    cookieStore.set("token", token, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    cookieStore.set("pkce_verifier", "", {
+      path: "/api/auth/callback",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 0,
+    });
 
+    const response = NextResponse.redirect(new URL("/admin", request.url));
     return applyCorsHeaders(response);
   } catch (err) {
     console.error("OAuth callback error:", err);
