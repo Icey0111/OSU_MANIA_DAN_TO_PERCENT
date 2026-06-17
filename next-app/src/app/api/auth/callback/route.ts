@@ -29,7 +29,14 @@ export async function GET(request: NextRequest) {
 
   if (!verifier) {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Missing PKCE verifier" }, { status: 400 })
+      NextResponse.json({
+        error: "Missing PKCE verifier",
+        debug: {
+          hasCookie: cookieHeader.length > 0,
+          cookieLen: cookieHeader.length,
+          hasCode: !!code,
+        },
+      }, { status: 400 })
     );
   }
 

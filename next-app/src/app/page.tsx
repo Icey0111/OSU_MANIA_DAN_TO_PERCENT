@@ -14,12 +14,12 @@ export default function Home() {
         >
           Admin Dashboard
         </Link>
-        <Link
+        <a
           href="/api/auth/login"
           className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition-colors"
         >
           Login with osu!
-        </Link>
+        </a>
       </div>
     </div>
   );
