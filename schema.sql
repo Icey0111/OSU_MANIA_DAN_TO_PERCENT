@@ -47,6 +47,12 @@ CREATE INDEX idx_votes_user_beatmap ON votes(user_id, beatmap_id);
 CREATE INDEX idx_votes_beatmap ON votes(beatmap_id);
 CREATE INDEX idx_votes_dan ON votes(beatmap_id, dan_level);
 
+-- ====== RLS: Disable for all tables ======
+-- Auth is handled at the API route level (custom JWT), not via Supabase RLS
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE beatmaps DISABLE ROW LEVEL SECURITY;
+ALTER TABLE votes DISABLE ROW LEVEL SECURITY;
+
 -- Trigger function: update beatmaps.total_votes when votes change
 CREATE OR REPLACE FUNCTION update_beatmap_total_votes()
 RETURNS TRIGGER AS $$

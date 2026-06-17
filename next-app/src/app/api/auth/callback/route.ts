@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { exchangeCode, getOsuUser } from "@/lib/osu";
 import { signToken } from "@/lib/auth";
-import { getSupabase } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 import { applyCorsHeaders, handleCors } from "@/lib/cors";
 
 export async function GET(request: NextRequest) {
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     // Upsert user in database
     let user;
     try {
-      const db = getSupabase();
+      const db = getSupabaseAdmin();
       const result = await db
         .from("users")
         .upsert(
