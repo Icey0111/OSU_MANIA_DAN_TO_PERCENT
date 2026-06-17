@@ -43,29 +43,60 @@ export async function GET(request: NextRequest) {
 
   try {
     // Exchange code for token
-    const tokens = await exchangeCode(code, verifier);
+    let tokens;
+    try {
+      tokens = await exchangeCode(code, verifier);
+    } catch (e) {
+      return applyCorsHeaders(
+        NextResponse.json({
+          error: "Token exchange failed",
+          detail: e instanceof Error ? e.message : String(e),
+        }, { status: 500 })
+      );
+    }
 
     // Fetch osu! user
-    const osuUser = await getOsuUser(tokens.access_token);
+    let osuUser;
+    try {
+      osuUser = await getOsuUser(tokens.access_token);
+    } catch (e) {
+      return applyCorsHeaders(
+        NextResponse.json({
+          error: "Failed to fetch osu! user",
+          detail: e instanceof Error ? e.message : String(e),
+        }, { status: 500 })
+      );
+    }
 
     // Upsert user in database
-    const db = getSupabase();
-    const { data: user } = await db
-      .from("users")
-      .upsert(
-        {
-          osu_id: osuUser.id,
-          osu_username: osuUser.username,
-          avatar_url: osuUser.avatar_url,
-          last_login_at: new Date().toISOString(),
-        },
-        { onConflict: "osu_id" }
-      )
-      .select("id, osu_id, osu_username, avatar_url, is_admin")
-      .single();
+    let user;
+    try {
+      const db = getSupabase();
+      const result = await db
+        .from("users")
+        .upsert(
+          {
+            osu_id: osuUser.id,
+            osu_username: osuUser.username,
+            avatar_url: osuUser.avatar_url,
+            last_login_at: new Date().toISOString(),
+          },
+          { onConflict: "osu_id" }
+        )
+        .select("id, osu_id, osu_username, avatar_url, is_admin")
+        .single();
 
-    if (!user) {
-      throw new Error("Failed to upsert user");
+      user = result.data;
+      if (!user) {
+        throw new Error("No user data returned: " + JSON.stringify(result.error));
+      }
+    } catch (e) {
+      return applyCorsHeaders(
+        NextResponse.json({
+          error: "Database upsert failed",
+          detail: e instanceof Error ? e.message : String(e),
+        }, { status: 500 })
+      );
     }
 
     // Sign JWT
