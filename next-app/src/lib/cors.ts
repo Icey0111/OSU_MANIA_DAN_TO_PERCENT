@@ -19,6 +19,7 @@ export function handleCors(request: Request): Response | null {
         "Access-Control-Allow-Origin": resolveOrigin(request),
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Credentials": "true",
         "Access-Control-Max-Age": "86400",
       },
     });
@@ -31,6 +32,7 @@ export function applyCorsHeaders(response: Response, request?: Request): Respons
   response.headers.set("Access-Control-Allow-Origin", resolveOrigin(request));
   response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.headers.set("Access-Control-Allow-Credentials", "true");
   response.headers.set("Access-Control-Max-Age", "86400");
   return response;
 }

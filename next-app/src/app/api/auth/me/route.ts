@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, extractBearerToken } from "@/lib/auth";
+import { verifyToken, extractBearerToken, extractCookieToken } from "@/lib/auth";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
 
@@ -7,7 +7,11 @@ export async function GET(request: NextRequest) {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
 
-  const token = extractBearerToken(request);
+  let token = extractBearerToken(request);
+  if (!token) {
+    // Fallback: check cookie (for overlay cross-origin sync)
+    token = extractCookieToken(request);
+  }
   if (!token) {
     return applyCorsHeaders(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
