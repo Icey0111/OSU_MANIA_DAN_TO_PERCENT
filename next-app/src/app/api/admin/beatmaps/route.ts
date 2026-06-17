@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, extractCookieToken } from "@/lib/auth";
-import { getSupabase } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   // Authenticate via cookie
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const order = searchParams.get("order") || "desc";
   const offset = (page - 1) * limit;
 
-  const db = getSupabase();
+  const db = getSupabaseAdmin();
 
   let query = db.from("beatmaps").select("*", { count: "exact" });
 

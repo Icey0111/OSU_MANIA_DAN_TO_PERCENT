@@ -30,10 +30,12 @@ export async function GET(
 
   if (beatmapError || !beatmap) {
     return applyCorsHeaders(
-      NextResponse.json(
-        { error: "Beatmap not found", not_voted: true },
-        { status: 404 }
-      ),
+      NextResponse.json({
+        beatmap: null,
+        distribution: {},
+        user_vote: null,
+        not_voted: true,
+      }),
       request
     );
   }
