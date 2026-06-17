@@ -31,16 +31,25 @@ function getRedirectUri(): string {
   return uri;
 }
 
-// === PKCE Helpers (Node.js native crypto) ===
+// === PKCE Helpers ===
+
+function toBase64Url(buf: Buffer): string {
+  return buf
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
 
 export async function generatePKCE(): Promise<{
   verifier: string;
   challenge: string;
 }> {
-  const verifier = crypto.randomBytes(64).toString("base64url");
+  // 43 bytes → ~58 base64 chars, meets PKCE minimum of 43
+  const verifier = toBase64Url(crypto.randomBytes(43));
 
   const hash = crypto.createHash("sha256").update(verifier).digest();
-  const challenge = hash.toString("base64url");
+  const challenge = toBase64Url(hash);
 
   return { verifier, challenge };
 }

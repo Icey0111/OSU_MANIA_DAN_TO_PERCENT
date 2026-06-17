@@ -15,7 +15,11 @@ export async function GET(request: NextRequest) {
 
     // Generate PKCE and state (Node.js native crypto)
     const { verifier, challenge } = await generatePKCE();
-    const stateStr = crypto.randomBytes(32).toString("base64url");
+    const stateStr = crypto.randomBytes(32)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
 
     // Store redirect info in state
     const state = `${stateStr}:${redirect}`;
