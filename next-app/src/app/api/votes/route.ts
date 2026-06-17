@@ -140,33 +140,35 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Get the actual total votes count
-  const { count: totalVotes } = await db
+  // 3. Get all votes for this beatmap (with user_id for dedup)
+  const { data: allVotes } = await db
     .from("votes")
-    .select("*", { count: "exact", head: true })
+    .select("dan_level, tier, user_id")
     .eq("beatmap_id", beatmap.id);
+
+  // Deduplicate: keep only the last vote per user (handles legacy duplicate rows)
+  const dedupedVotes: Record<string, { dan_level: string; tier: string }> = {};
+  if (allVotes) {
+    for (const v of allVotes) {
+      dedupedVotes[v.user_id] = { dan_level: v.dan_level, tier: v.tier };
+    }
+  }
+
+  const totalVotes = Object.keys(dedupedVotes).length;
 
   // Update the denormalized counter
   await db
     .from("beatmaps")
-    .update({ total_votes: totalVotes || 0, updated_at: new Date().toISOString() })
+    .update({ total_votes: totalVotes, updated_at: new Date().toISOString() })
     .eq("id", beatmap.id);
 
-  // 4. Get vote distribution
-  const { data: allVotes } = await db
-    .from("votes")
-    .select("dan_level, tier")
-    .eq("beatmap_id", beatmap.id);
-
-  // Build distribution map
+  // 4. Build vote distribution from deduped votes
   const distribution: Record<string, { low: number; mid: number; high: number }> = {};
-  if (allVotes) {
-    for (const vote of allVotes) {
-      if (!distribution[vote.dan_level]) {
-        distribution[vote.dan_level] = { low: 0, mid: 0, high: 0 };
-      }
-      distribution[vote.dan_level][vote.tier as "low" | "mid" | "high"]++;
+  for (const dv of Object.values(dedupedVotes)) {
+    if (!distribution[dv.dan_level]) {
+      distribution[dv.dan_level] = { low: 0, mid: 0, high: 0 };
     }
+    distribution[dv.dan_level][dv.tier as "low" | "mid" | "high"]++;
   }
 
   // Sort distribution by dan order
@@ -190,11 +192,12 @@ export async function POST(request: NextRequest) {
           title: beatmap.title,
           version: beatmap.version,
           creator: beatmap.creator,
-          total_votes: totalVotes || 0,
+          total_votes: totalVotes,
           url: `https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}#mania/${beatmap.osu_beatmap_id}`,
         },
-        total_votes: totalVotes || 0,
+        total_votes: totalVotes,
         distribution: sortedDistribution,
+        user_vote: { dan_level: body.dan_level, tier: body.tier },
       },
     }),
     request

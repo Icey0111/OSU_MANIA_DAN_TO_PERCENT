@@ -40,20 +40,27 @@ export async function GET(
     );
   }
 
-  // Get vote distribution
+  // Get vote distribution (deduplicated by user_id — keep last row)
   const { data: allVotes } = await db
     .from("votes")
     .select("dan_level, tier, user_id")
     .eq("beatmap_id", beatmap.id);
 
-  const distribution: Record<string, { low: number; mid: number; high: number }> = {};
+  // Deduplicate: keep only the last vote per user (handles legacy duplicate rows)
+  const dedupedVotes: Record<string, { dan_level: string; tier: string }> = {};
   if (allVotes) {
-    for (const vote of allVotes) {
-      if (!distribution[vote.dan_level]) {
-        distribution[vote.dan_level] = { low: 0, mid: 0, high: 0 };
-      }
-      distribution[vote.dan_level][vote.tier as "low" | "mid" | "high"]++;
+    for (const v of allVotes) {
+      dedupedVotes[v.user_id] = { dan_level: v.dan_level, tier: v.tier };
     }
+  }
+
+  // Build distribution map from deduped votes
+  const distribution: Record<string, { low: number; mid: number; high: number }> = {};
+  for (const dv of Object.values(dedupedVotes)) {
+    if (!distribution[dv.dan_level]) {
+      distribution[dv.dan_level] = { low: 0, mid: 0, high: 0 };
+    }
+    distribution[dv.dan_level][dv.tier as "low" | "mid" | "high"]++;
   }
 
   // Sort by dan order
@@ -65,21 +72,26 @@ export async function GET(
     sortedDistribution[key] = distribution[key];
   }
 
-  // Get current user's vote if authenticated
+  // Get current user's vote if authenticated.
+  // Use filter().at(-1) instead of find() so that if duplicate rows exist
+  // (e.g. left over from a broken upsert), we always pick the last row.
   let userVote = null;
   const token = extractBearerToken(request);
   if (token) {
     const payload = await verifyToken(token);
     if (payload) {
-      const userVoteData = allVotes?.find((v) => v.user_id === payload.sub);
-      if (userVoteData) {
+      const userRows = allVotes?.filter((v) => v.user_id === payload.sub);
+      if (userRows && userRows.length > 0) {
+        const last = userRows[userRows.length - 1];
         userVote = {
-          dan_level: userVoteData.dan_level,
-          tier: userVoteData.tier,
+          dan_level: last.dan_level,
+          tier: last.tier,
         };
       }
     }
   }
+
+  const dedupedCount = Object.keys(dedupedVotes).length;
 
   return applyCorsHeaders(
     NextResponse.json({
@@ -90,7 +102,7 @@ export async function GET(
         title: beatmap.title,
         version: beatmap.version,
         creator: beatmap.creator,
-        total_votes: beatmap.total_votes,
+        total_votes: dedupedCount,
         url: `https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}#mania/${beatmap.osu_beatmap_id}`,
       },
       distribution: sortedDistribution,
