@@ -145,7 +145,16 @@ body {
   background: rgba(255,255,255,0.03);
   border-radius: 4px;
 }
-.result-dan { font-size: 11px; font-weight: 600; color: #ddd; margin-bottom: 2px; }
+.result-dan {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffcc88;
+  margin-bottom: 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.result-dan-total { font-size: 9px; color: #888; font-weight: 400; }
 .result-bar-group { display: flex; flex-direction: column; gap: 1px; }
 .result-bar-row {
   display: flex;
@@ -153,13 +162,13 @@ body {
   gap: 4px;
   font-size: 10px;
 }
-.result-bar-label { width: 30px; text-align: right; color: #999; text-transform: capitalize; }
+.result-bar-label { width: 34px; text-align: right; color: #999; text-transform: capitalize; }
 .result-bar-track { flex: 1; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; }
 .result-bar-fill { height: 100%; border-radius: 5px; transition: width 0.3s ease; }
 .result-bar-fill.low  { background: #f97316; }
 .result-bar-fill.mid  { background: #eab308; }
 .result-bar-fill.high { background: #ef4444; }
-.result-bar-pct { width: 32px; text-align: right; font-size: 10px; color: #aaa; }
+.result-bar-count { width: 52px; text-align: right; font-size: 10px; color: #ccc; }
 
 /* Messages */
 .message { text-align: center; padding: 20px; color: #888; font-size: 12px; }
@@ -222,6 +231,7 @@ const state = {
   reconnectAttempts: 0,
   lastBeatmapId: null,
   lastError: null,           // latest error message for display
+  pollTimer: null,           // interval for auto-refreshing vote data
 };
 
 // ==================== DOM ====================
@@ -319,7 +329,7 @@ function render() {
   // Results section
   if (s.voteData && s.voteData.distribution && Object.keys(s.voteData.distribution).length > 0) {
     const dist = s.voteData.distribution;
-    const total = s.voteData.beatmap.total_votes;
+    const total = s.voteData.beatmap?.total_votes || 0;
     html += `<div class="section-title">Results (${total} vote${total !== 1 ? 's' : ''})</div>`;
     html += `<div class="results-section">`;
 
@@ -328,9 +338,9 @@ function render() {
       const label = DAN_LABELS[dan] || dan;
       const isUserVote = s.voteData.user_vote && s.voteData.user_vote.dan_level === dan;
 
-      let danLabel = isUserVote ? `★ ${label}` : label;
+      const danName = isUserVote ? `★ ${label}` : label;
       html += `<div class="result-row">
-        <div class="result-dan">${danLabel}</div>
+        <div class="result-dan"><span>${danName}</span><span class="result-dan-total">${danTotal} vote${danTotal !== 1 ? 's' : ''}</span></div>
         <div class="result-bar-group">`;
 
       for (const tier of TIERS) {
@@ -342,7 +352,7 @@ function render() {
             <div class="result-bar-track">
               <div class="result-bar-fill ${tier}" style="width:${pct}%"></div>
             </div>
-            <span class="result-bar-pct">${pct}%</span>
+            <span class="result-bar-count">${count} | ${pct}%</span>
           </div>`;
       }
 
@@ -429,6 +439,7 @@ function handleBeatmapData(bm) {
 
   // Only process mania beatmaps (mode 3 = mania)
   if (mode !== 3) {
+    stopPolling();
     if (state.beatmap) {
       state.beatmap = null;
       state.voteData = null;
@@ -450,8 +461,9 @@ function handleBeatmapData(bm) {
   state.appState = state.user ? 'BEATMAP_LOADED' : 'LOGGED_OUT';
   render();
 
-  // Fetch vote data for this beatmap
+  // Fetch vote data for this beatmap, then start auto-polling
   fetchVoteData(bm.id);
+  startPolling();
 }
 
 // ==================== API ====================
@@ -511,6 +523,22 @@ async function fetchVoteData(beatmapId) {
     state.lastError = `Load failed (${status}): ${data.error || 'unknown'}`;
   }
   render();
+}
+
+function startPolling() {
+  stopPolling();
+  state.pollTimer = setInterval(() => {
+    if (state.beatmap && state.appState !== 'VOTE_SUBMITTING') {
+      fetchVoteData(state.beatmap.id);
+    }
+  }, 5000);
+}
+
+function stopPolling() {
+  if (state.pollTimer) {
+    clearInterval(state.pollTimer);
+    state.pollTimer = null;
+  }
 }
 
 async function fetchUserInfo() {
