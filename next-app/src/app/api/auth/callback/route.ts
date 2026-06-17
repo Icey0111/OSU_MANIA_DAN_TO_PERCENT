@@ -141,20 +141,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Admin flow: set JWT token cookie and clear PKCE verifier
-    cookieStore.set("token", token, {
+    const response = NextResponse.redirect(new URL("/admin", request.url));
+    response.cookies.set("token", token, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30,
     });
-    cookieStore.set("pkce_verifier", "", {
+    response.cookies.set("pkce_verifier", "", {
       path: "/api/auth/callback",
       httpOnly: true,
       sameSite: "lax",
       maxAge: 0,
     });
 
-    const response = NextResponse.redirect(new URL("/admin", request.url));
     return applyCorsHeaders(response);
   } catch (err) {
     console.error("OAuth callback error:", err);
