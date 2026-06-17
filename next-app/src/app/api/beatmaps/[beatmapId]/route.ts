@@ -4,6 +4,9 @@ import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
 import { DAN_ORDER } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { beatmapId: string } }

@@ -4,6 +4,9 @@ import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
 import { isValidDanLevel, isValidTier, DAN_ORDER } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(request: NextRequest) {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
