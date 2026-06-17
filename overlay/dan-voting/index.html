@@ -258,7 +258,7 @@ function render() {
 <div class="beatmap-card">
   <div class="song-title">${esc(bm.artist)} - ${esc(bm.title)}</div>
   <div class="song-version">[${esc(bm.version)}]</div>
-  <div class="song-meta">Beatmapset #${bm.set} • mapped by ${esc(bm.creator)}</div>
+  <div class="song-meta">Beatmapset #${bm.set} • mapped by ${esc(bm.mapper || bm.creator)}</div>
   <a class="song-link" href="https://osu.ppy.sh/beatmapsets/${bm.set}#mania/${bm.id}" target="_blank">View on osu.ppy.sh →</a>
 </div>`;
   } else if (s.appState === 'WAITING') {
@@ -348,7 +348,7 @@ function render() {
     html += `<div class="section-title">Results</div><div class="message">No votes yet — be the first!</div>`;
   }
 
-  html += `<div style="height:20px"></div>`;
+  html += `<div style="height:20px;text-align:center;font-size:10px;color:#555">press F5 to refresh • dan-voting</div>`;
   app.innerHTML = html;
 }
 
@@ -384,7 +384,7 @@ function connectWS() {
     state.ws.send(JSON.stringify({
       applyFilters: [{
         field: 'beatmap',
-        keys: ['id','set','artist','title','version','creator','mode','status']
+        keys: ['id','set','artist','title','version','mapper','creator','mode','status']
       }]
     }));
     render();
@@ -419,8 +419,11 @@ function scheduleReconnect() {
 }
 
 function handleBeatmapData(bm) {
-  // Only process mania beatmaps
-  if (bm.mode !== 3) {
+  // tosu V2: mode is {number, name}, V1: mode is plain number
+  const mode = typeof bm.mode === 'object' ? bm.mode.number : bm.mode;
+
+  // Only process mania beatmaps (mode 3 = mania)
+  if (mode !== 3) {
     if (state.beatmap) {
       state.beatmap = null;
       state.voteData = null;
@@ -522,7 +525,7 @@ async function submitVote() {
     artist: bm.artist,
     title: bm.title,
     version: bm.version,
-    creator: bm.creator,
+    creator: bm.mapper || bm.creator,
     dan_level: state.selectedDan,
     tier: state.selectedTier,
   });
