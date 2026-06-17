@@ -44,7 +44,8 @@ export async function GET(
   const { data: allVotes } = await db
     .from("votes")
     .select("dan_level, tier, user_id")
-    .eq("beatmap_id", beatmap.id);
+    .eq("beatmap_id", beatmap.id)
+    .order("created_at", { ascending: true });
 
   // Deduplicate: keep only the last vote per user (handles legacy duplicate rows)
   const dedupedVotes: Record<string, { dan_level: string; tier: string }> = {};
