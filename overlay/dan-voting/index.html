@@ -575,11 +575,15 @@ async function submitVote() {
   });
 
   if (status === 200) {
+    // Use POST results directly — API already queries DB for latest distribution
+    state.voteData = data.results;
+    state.voteData.user_vote = data.vote; // { dan_level, tier } from POST response
     state.lastError = null;
     state.appState = 'BEATMAP_LOADED';
-    // Re-fetch from GET to get authoritative data (includes user_vote)
-    fetchVoteData(bm.id);
-    return; // fetchVoteData will call render()
+    render();
+    // Background refresh from GET to double-check (includes user_vote from DB)
+    setTimeout(() => fetchVoteData(bm.id), 1500);
+    return;
   } else {
     state.lastError = `Vote failed (${status}): ${data.error || 'unknown'}`;
     console.error('Vote failed:', data.error);
