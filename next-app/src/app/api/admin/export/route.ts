@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, extractCookieToken } from "@/lib/auth";
-import { getSupabase } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 
 interface BeatmapJoined {
   osu_beatmap_id: number;
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const db = getSupabase();
+  const db = getSupabaseAdmin();
 
   // Join votes with beatmaps and users
   const { data, error } = await db
