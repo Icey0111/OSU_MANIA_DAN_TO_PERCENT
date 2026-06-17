@@ -127,6 +127,8 @@ export async function GET(request: NextRequest) {
   if (window.opener) {
     window.opener.postMessage({ type: "osu_auth", ...data }, "*");
     window.close();
+  } else if (window.parent !== window) {
+    window.parent.postMessage({ type: "osu_auth", ...data }, "*");
   } else {
     document.body.innerHTML = "<p>Login complete. You can close this window.</p>";
   }
