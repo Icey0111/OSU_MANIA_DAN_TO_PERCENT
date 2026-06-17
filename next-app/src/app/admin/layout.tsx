@@ -44,7 +44,7 @@ export default function AdminLayout({
         </nav>
         <div className="p-4 border-t border-gray-800">
           <Link
-            href="/api/auth/login?redirect=admin"
+            href="/api/auth/logout"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors"
           >
             <span>🚪</span>
