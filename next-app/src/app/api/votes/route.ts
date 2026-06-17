@@ -115,19 +115,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Upsert vote (ON CONFLICT on user_id + beatmap_id)
+  // 2. Delete existing vote for this user+beatmap, then insert new one
+  // (DELETE + INSERT is more reliable than upsert with composite onConflict)
+  await db
+    .from("votes")
+    .delete()
+    .eq("user_id", payload.sub)
+    .eq("beatmap_id", beatmap.id);
+
   const { error: voteError } = await db
     .from("votes")
-    .upsert(
-      {
-        user_id: payload.sub,
-        beatmap_id: beatmap.id,
-        dan_level: body.dan_level,
-        tier: body.tier,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,beatmap_id" }
-    );
+    .insert({
+      user_id: payload.sub,
+      beatmap_id: beatmap.id,
+      dan_level: body.dan_level,
+      tier: body.tier,
+    });
 
   if (voteError) {
     console.error("Vote upsert error:", voteError);
