@@ -14,7 +14,8 @@ export async function GET(
   const beatmapId = parseInt(params.beatmapId, 10);
   if (isNaN(beatmapId)) {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 })
+      NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 }),
+      request
     );
   }
 
@@ -32,7 +33,8 @@ export async function GET(
       NextResponse.json(
         { error: "Beatmap not found", not_voted: true },
         { status: 404 }
-      )
+      ),
+      request
     );
   }
 
@@ -91,6 +93,7 @@ export async function GET(
       },
       distribution: sortedDistribution,
       user_vote: userVote,
-    })
+    }),
+    request
   );
 }

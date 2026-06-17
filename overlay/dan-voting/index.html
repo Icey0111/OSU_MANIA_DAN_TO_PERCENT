@@ -221,6 +221,7 @@ const state = {
   ws: null,
   reconnectAttempts: 0,
   lastBeatmapId: null,
+  lastError: null,           // latest error message for display
 };
 
 // ==================== DOM ====================
@@ -250,6 +251,10 @@ function render() {
   <span class="title">Dan Voting</span>
   <div>${headerRight}</div>
 </div>`;
+
+  if (s.lastError) {
+    html += `<div class="message error">${esc(s.lastError)}</div>`;
+  }
 
   // Beatmap info
   if (s.beatmap) {
@@ -457,10 +462,14 @@ async function apiGet(path) {
   }
   try {
     const res = await fetch(`${API_BASE}${path}`, { headers });
-    return { status: res.status, data: await res.json() };
+    const data = await res.json();
+    if (res.status !== 200) {
+      console.warn(`[API] GET ${path} → ${res.status}:`, data.error || data);
+    }
+    return { status: res.status, data };
   } catch(err) {
-    console.error('API error:', err);
-    return { status: 0, data: { error: 'Network error' } };
+    console.error(`[API] GET ${path} failed:`, err.message || err);
+    return { status: 0, data: { error: 'Network error — check CORS or connectivity' } };
   }
 }
 
@@ -477,10 +486,14 @@ async function apiPost(path, body) {
       headers,
       body: JSON.stringify(body),
     });
-    return { status: res.status, data: await res.json() };
+    const data = await res.json();
+    if (res.status !== 200) {
+      console.warn(`[API] POST ${path} → ${res.status}:`, data.error || data);
+    }
+    return { status: res.status, data };
   } catch(err) {
-    console.error('API error:', err);
-    return { status: 0, data: { error: 'Network error' } };
+    console.error(`[API] POST ${path} failed:`, err.message || err);
+    return { status: 0, data: { error: 'Network error — check CORS or connectivity' } };
   }
 }
 
@@ -488,13 +501,16 @@ async function fetchVoteData(beatmapId) {
   const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}`);
   if (status === 200) {
     state.voteData = data;
+    state.lastError = null;
     // Pre-select user's previous vote
     if (data.user_vote) {
       state.selectedDan = data.user_vote.dan_level;
       state.selectedTier = data.user_vote.tier;
     }
-    render();
+  } else {
+    state.lastError = `Load failed (${status}): ${data.error || 'unknown'}`;
   }
+  render();
 }
 
 async function fetchUserInfo() {
@@ -532,8 +548,10 @@ async function submitVote() {
 
   if (status === 200) {
     state.voteData = data.results;
+    state.lastError = null;
     state.appState = 'BEATMAP_LOADED';
   } else {
+    state.lastError = `Vote failed (${status}): ${data.error || 'unknown'}`;
     console.error('Vote failed:', data.error);
     state.appState = 'BEATMAP_LOADED';
   }

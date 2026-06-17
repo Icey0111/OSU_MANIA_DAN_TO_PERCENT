@@ -12,14 +12,16 @@ export async function POST(request: NextRequest) {
   const token = extractBearerToken(request);
   if (!token) {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      request
     );
   }
 
   const payload = await verifyToken(token);
   if (!payload) {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
+      NextResponse.json({ error: "Invalid or expired token" }, { status: 401 }),
+      request
     );
   }
 
@@ -39,7 +41,8 @@ export async function POST(request: NextRequest) {
     body = await request.json();
   } catch {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+      NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }),
+      request
     );
   }
 
@@ -56,23 +59,35 @@ export async function POST(request: NextRequest) {
       NextResponse.json(
         { error: "Missing required fields: osu_beatmap_id, beatmapset_id, artist, title, version, creator" },
         { status: 400 }
-      )
+      ),
+      request
     );
   }
 
   if (!isValidDanLevel(body.dan_level)) {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Invalid dan_level" }, { status: 400 })
+      NextResponse.json({ error: "Invalid dan_level" }, { status: 400 }),
+      request
     );
   }
 
   if (!isValidTier(body.tier)) {
     return applyCorsHeaders(
-      NextResponse.json({ error: "Invalid tier. Must be 'low', 'mid', or 'high'" }, { status: 400 })
+      NextResponse.json({ error: "Invalid tier. Must be 'low', 'mid', or 'high'" }, { status: 400 }),
+      request
     );
   }
 
-  const db = getSupabaseAdmin();
+  let db;
+  try {
+    db = getSupabaseAdmin();
+  } catch (e) {
+    console.error("getSupabaseAdmin failed:", e);
+    return applyCorsHeaders(
+      NextResponse.json({ error: "Server configuration error" }, { status: 500 }),
+      request
+    );
+  }
 
   // 1. Upsert beatmap record
   const { data: beatmap, error: beatmapError } = await db
@@ -95,7 +110,8 @@ export async function POST(request: NextRequest) {
   if (beatmapError || !beatmap) {
     console.error("Beatmap upsert error:", beatmapError);
     return applyCorsHeaders(
-      NextResponse.json({ error: "Failed to upsert beatmap" }, { status: 500 })
+      NextResponse.json({ error: "Failed to upsert beatmap" }, { status: 500 }),
+      request
     );
   }
 
@@ -116,7 +132,8 @@ export async function POST(request: NextRequest) {
   if (voteError) {
     console.error("Vote upsert error:", voteError);
     return applyCorsHeaders(
-      NextResponse.json({ error: "Failed to save vote" }, { status: 500 })
+      NextResponse.json({ error: "Failed to save vote" }, { status: 500 }),
+      request
     );
   }
 
@@ -176,6 +193,7 @@ export async function POST(request: NextRequest) {
         total_votes: totalVotes || 0,
         distribution: sortedDistribution,
       },
-    })
+    }),
+    request
   );
 }
