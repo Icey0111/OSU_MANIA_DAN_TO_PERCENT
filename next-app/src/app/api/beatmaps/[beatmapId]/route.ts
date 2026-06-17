@@ -94,7 +94,7 @@ export async function GET(
 
   const dedupedCount = Object.keys(dedupedVotes).length;
 
-  return applyCorsHeaders(
+  const response = applyCorsHeaders(
     NextResponse.json({
       beatmap: {
         osu_beatmap_id: beatmap.osu_beatmap_id,
@@ -111,4 +111,6 @@ export async function GET(
     }),
     request
   );
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  return response;
 }

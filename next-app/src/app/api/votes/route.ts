@@ -115,13 +115,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Delete existing vote for this user+beatmap, then insert new one
-  // (DELETE + INSERT is more reliable than upsert with composite onConflict)
-  await db
+  // 2. Delete any existing vote for this user+beatmap, then insert the new one.
+  //    DELETE + INSERT is more reliable than upsert with composite onConflict keys,
+  //    which can silently create duplicate rows in Supabase.
+  const { error: deleteError } = await db
     .from("votes")
     .delete()
     .eq("user_id", payload.sub)
     .eq("beatmap_id", beatmap.id);
+
+  if (deleteError) {
+    console.error("Vote delete error:", deleteError);
+    return applyCorsHeaders(
+      NextResponse.json({ error: "Failed to update vote" }, { status: 500 }),
+      request
+    );
+  }
 
   const { error: voteError } = await db
     .from("votes")

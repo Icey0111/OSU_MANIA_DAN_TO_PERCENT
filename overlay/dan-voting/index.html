@@ -509,13 +509,16 @@ async function apiPost(path, body) {
   }
 }
 
-async function fetchVoteData(beatmapId) {
+// keepSelection=true: only update distribution, don't overwrite user's current selection
+// keepSelection=false: full sync including selectedDan/selectedTier (used on initial load)
+async function fetchVoteData(beatmapId, keepSelection = false) {
   const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}?_t=${Date.now()}`);
   if (status === 200) {
     state.voteData = data;
     state.lastError = null;
-    // Pre-select user's previous vote
-    if (data.user_vote) {
+    // Only auto-select from API on initial load (new beatmap / login).
+    // During polling we keep whatever the user last clicked/submitted.
+    if (!keepSelection && data.user_vote) {
       state.selectedDan = data.user_vote.dan_level;
       state.selectedTier = data.user_vote.tier;
     }
@@ -529,7 +532,7 @@ function startPolling() {
   stopPolling();
   state.pollTimer = setInterval(() => {
     if (state.beatmap && state.appState !== 'VOTE_SUBMITTING') {
-      fetchVoteData(state.beatmap.id);
+      fetchVoteData(state.beatmap.id, true);
     }
   }, 5000);
 }
@@ -581,9 +584,6 @@ async function submitVote() {
     state.lastError = null;
     state.appState = 'BEATMAP_LOADED';
     render();
-    // Background refresh from GET to double-check (includes user_vote from DB)
-    setTimeout(() => fetchVoteData(bm.id), 1500);
-    return;
   } else {
     state.lastError = `Vote failed (${status}): ${data.error || 'unknown'}`;
     console.error('Vote failed:', data.error);
