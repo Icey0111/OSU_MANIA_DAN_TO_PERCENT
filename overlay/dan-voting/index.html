@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>osu!mania Dan Voting</title>
-<!-- v3: keepSelection fix + cache control -->
+<!-- v5: preserve user_vote during polling -->
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -440,9 +440,11 @@ function scheduleReconnect() {
 function handleBeatmapData(bm) {
   // tosu V2: mode is {number, name}, V1: mode is plain number
   const mode = typeof bm.mode === 'object' ? bm.mode.number : bm.mode;
+  console.log(`[handleBeatmapData] beatmap=${bm.id} mode=${mode} last=${state.lastBeatmapId}`);
 
   // Only process mania beatmaps (mode 3 = mania)
   if (mode !== 3) {
+    console.log('[handleBeatmapData] non-mania, clearing');
     stopPolling();
     if (state.beatmap) {
       state.beatmap = null;
@@ -455,8 +457,12 @@ function handleBeatmapData(bm) {
     return;
   }
 
-  if (!bm.id || bm.id === state.lastBeatmapId) return;
+  if (!bm.id || bm.id === state.lastBeatmapId) {
+    console.log(`[handleBeatmapData] SKIP id=${bm.id}`);
+    return;
+  }
 
+  console.log(`[handleBeatmapData] NEW beatmap id=${bm.id} resetting dan=${state.selectedDan}`);
   state.lastBeatmapId = bm.id;
   state.beatmap = bm;
   state.voteData = null;
@@ -513,18 +519,29 @@ async function apiPost(path, body) {
   }
 }
 
-// keepSelection=true: only update distribution, don't overwrite user's current selection
-// keepSelection=false: full sync including selectedDan/selectedTier (used on initial load)
+// keepSelection=true: only update distribution/beatmap, preserve user_vote AND selection
+// keepSelection=false: full sync including user_vote + selectedDan/selectedTier (initial load)
 async function fetchVoteData(beatmapId, keepSelection = false) {
+  console.log(`[fetchVoteData] beatmap=${beatmapId} keepSelection=${keepSelection} selectedDan=${state.selectedDan}`);
   const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}?_t=${Date.now()}`);
   if (status === 200) {
-    state.voteData = data;
     state.lastError = null;
-    // Only auto-select from API on initial load (new beatmap / login).
-    // During polling we keep whatever the user last clicked/submitted.
-    if (!keepSelection && data.user_vote) {
-      state.selectedDan = data.user_vote.dan_level;
-      state.selectedTier = data.user_vote.tier;
+    console.log(`[fetchVoteData] GET ok user_vote=${JSON.stringify(data.user_vote)} keepSelection=${keepSelection}`);
+    if (!keepSelection) {
+      // Full sync: overwrite everything from server
+      state.voteData = data;
+      if (data.user_vote) {
+        console.log(`[fetchVoteData] OVERWRITING selectedDan: ${state.selectedDan} -> ${data.user_vote.dan_level}`);
+        state.selectedDan = data.user_vote.dan_level;
+        state.selectedTier = data.user_vote.tier;
+      }
+    } else {
+      // Polling: only update distribution bars and beatmap info, preserve user_vote and selection
+      console.log(`[fetchVoteData] keepSelection=TRUE, preserving selectedDan=${state.selectedDan} user_vote=${JSON.stringify(state.voteData?.user_vote)}`);
+      if (!state.voteData) state.voteData = {};
+      state.voteData.beatmap = data.beatmap;
+      state.voteData.distribution = data.distribution;
+      // keep existing user_vote, selectedDan, selectedTier unchanged
     }
   } else {
     state.lastError = `Load failed (${status}): ${data.error || 'unknown'}`;
@@ -534,9 +551,13 @@ async function fetchVoteData(beatmapId, keepSelection = false) {
 
 function startPolling() {
   stopPolling();
+  console.log('[poll] started 5s interval');
   state.pollTimer = setInterval(() => {
     if (state.beatmap && state.appState !== 'VOTE_SUBMITTING') {
+      console.log(`[poll] tick appState=${state.appState}`);
       fetchVoteData(state.beatmap.id, true);
+    } else {
+      console.log(`[poll] SKIP beatmap=${!!state.beatmap} appState=${state.appState}`);
     }
   }, 5000);
 }
@@ -566,6 +587,9 @@ async function fetchUserInfo() {
 async function submitVote() {
   if (!state.selectedDan || !state.selectedTier || !state.beatmap) return;
 
+  const chosenDan = state.selectedDan;
+  const chosenTier = state.selectedTier;
+  console.log(`[submitVote] START dan=${chosenDan} tier=${chosenTier} beatmap=${state.beatmap.id}`);
   state.appState = 'VOTE_SUBMITTING';
   render();
 
@@ -577,20 +601,22 @@ async function submitVote() {
     title: bm.title,
     version: bm.version,
     creator: bm.mapper || bm.creator,
-    dan_level: state.selectedDan,
-    tier: state.selectedTier,
+    dan_level: chosenDan,
+    tier: chosenTier,
   });
 
+  console.log(`[submitVote] POST status=${status}`);
   if (status === 200) {
     // Use POST results directly — API already queries DB for latest distribution
     state.voteData = data.results;
     state.voteData.user_vote = data.vote; // { dan_level, tier } from POST response
     state.lastError = null;
     state.appState = 'BEATMAP_LOADED';
+    console.log(`[submitVote] SUCCESS selectedDan=${state.selectedDan} voteData.user_vote=${JSON.stringify(state.voteData.user_vote)}`);
     render();
   } else {
     state.lastError = `Vote failed (${status}): ${data.error || 'unknown'}`;
-    console.error('Vote failed:', data.error);
+    console.error('[submitVote] FAILED:', data.error);
     state.appState = 'BEATMAP_LOADED';
   }
   render();
@@ -653,11 +679,13 @@ function logout() {
 }
 
 function selectDan(dan) {
+  console.log(`[selectDan] click: ${state.selectedDan} -> ${state.selectedDan === dan ? 'null (toggle off)' : dan}`);
   state.selectedDan = state.selectedDan === dan ? null : dan;
   render();
 }
 
 function selectTier(tier) {
+  console.log(`[selectTier] click: ${state.selectedTier} -> ${state.selectedTier === tier ? 'null (toggle off)' : tier}`);
   state.selectedTier = state.selectedTier === tier ? null : tier;
   render();
 }
