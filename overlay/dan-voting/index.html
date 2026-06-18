@@ -206,6 +206,11 @@ body {
 // ==================== CONFIG ====================
 const API_BASE = 'https://osu-mania-dan-to-percent.vercel.app';
 const TOSU_WS = 'ws://127.0.0.1:24050/websocket/v2';
+const INSTALLATION_ID = '__DAN_VOTING_INSTALLATION_ID__';
+const IS_INGAME_RENDERER =
+  location.protocol === 'tosu:' ||
+  new URLSearchParams(location.search).get('renderer') === 'ingame';
+const HAS_INSTALLATION_ID = /^[a-f0-9]{64}$/.test(INSTALLATION_ID);
 
 const DAN_LEVELS = [
   '1','2','3','4','5','6','7',
@@ -236,6 +241,7 @@ const state = {
   lastBeatmapId: null,
   lastError: null,           // latest error message for display
   pollTimer: null,           // interval for auto-refreshing vote data
+  authSyncTimer: null,       // polls browser-to-renderer login handoffs
 };
 
 // ==================== DOM ====================
@@ -256,6 +262,8 @@ function render() {
     headerRight = `<span class="user-info">${s.user.username} | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
   } else if (s.token) {
     headerRight = `<span class="user-info">Loading... | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
+  } else if (IS_INGAME_RENDERER) {
+    headerRight = `<span class="user-info">Waiting for browser login...</span>`;
   } else {
     headerRight = `<button class="btn btn-login" onclick="login()">Login with osu!</button>`;
   }
@@ -327,7 +335,11 @@ function render() {
       : 'Submit Vote';
     html += `<button class="btn btn-primary submit-btn" ${canSubmit ? '' : 'disabled'} onclick="submitVote()">${submitText}</button>`;
   } else if (s.beatmap && !s.user) {
-    html += `<div class="login-prompt">Login with osu! to vote<br><button class="btn btn-login" style="margin-top:6px" onclick="login()">Login with osu!</button></div>`;
+    if (IS_INGAME_RENDERER) {
+      html += `<div class="login-prompt">Open http://127.0.0.1:24050/dan-voting/<br>in your browser to log in</div>`;
+    } else {
+      html += `<div class="login-prompt">Login with osu! to vote<br><button class="btn btn-login" style="margin-top:6px" onclick="login()">Login with osu!</button></div>`;
+    }
   }
 
   // Results section
@@ -574,12 +586,18 @@ async function fetchUserInfo() {
   if (status === 200) {
     state.user = data;
     state.appState = state.beatmap ? 'BEATMAP_LOADED' : 'WAITING';
+    if (!IS_INGAME_RENDERER) {
+      publishAuthToRenderer();
+    }
   } else {
     // Token expired or invalid
     localStorage.removeItem('dan_voting_token');
     state.token = null;
     state.user = null;
     state.appState = state.beatmap ? 'LOGGED_OUT' : 'WAITING';
+    if (IS_INGAME_RENDERER) {
+      startAuthSyncPolling();
+    }
   }
   render();
 }
@@ -624,6 +642,7 @@ async function submitVote() {
 
 // ==================== AUTH ====================
 function login() {
+  if (IS_INGAME_RENDERER) return;
   const width = 600;
   const height = 700;
   const left = (screen.width - width) / 2;
@@ -643,7 +662,7 @@ function login() {
 
 // Listen for postMessage from OAuth callback
 window.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'osu_auth') {
+  if (event.origin === API_BASE && event.data && event.data.type === 'osu_auth') {
     const { token, user } = event.data;
     state.token = token;
     state.user = user;
@@ -654,6 +673,7 @@ window.addEventListener('message', (event) => {
       loginWindow = null;
     }
     render();
+    publishAuthToRenderer();
 
     // Re-fetch vote data with auth
     if (state.beatmap) {
@@ -661,6 +681,45 @@ window.addEventListener('message', (event) => {
     }
   }
 });
+
+async function publishAuthToRenderer() {
+  if (IS_INGAME_RENDERER || !HAS_INSTALLATION_ID || !state.token) return;
+
+  const { status, data } = await apiPost('/api/auth/overlay-session', {
+    installation_id: INSTALLATION_ID,
+  });
+  if (status !== 200) {
+    state.lastError = `In-game login sync failed (${status}): ${data.error || 'unknown'}`;
+    render();
+  }
+}
+
+async function claimRendererAuth() {
+  if (!IS_INGAME_RENDERER || !HAS_INSTALLATION_ID || state.token) return;
+
+  const { status, data } = await apiGet(
+    `/api/auth/overlay-session?installation_id=${encodeURIComponent(INSTALLATION_ID)}&_t=${Date.now()}`
+  );
+  if (status === 200 && data.token) {
+    state.token = data.token;
+    localStorage.setItem('dan_voting_token', data.token);
+    stopAuthSyncPolling();
+    await fetchUserInfo();
+  }
+}
+
+function startAuthSyncPolling() {
+  if (!IS_INGAME_RENDERER || !HAS_INSTALLATION_ID || state.token || state.authSyncTimer) return;
+  claimRendererAuth();
+  state.authSyncTimer = setInterval(claimRendererAuth, 2000);
+}
+
+function stopAuthSyncPolling() {
+  if (state.authSyncTimer) {
+    clearInterval(state.authSyncTimer);
+    state.authSyncTimer = null;
+  }
+}
 
 function logout() {
   state.token = null;
@@ -704,6 +763,8 @@ function init() {
   // Fetch user info if token exists
   if (state.token) {
     fetchUserInfo();
+  } else {
+    startAuthSyncPolling();
   }
 
   // Initial render

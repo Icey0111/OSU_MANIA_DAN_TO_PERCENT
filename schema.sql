@@ -47,11 +47,24 @@ CREATE INDEX idx_votes_user_beatmap ON votes(user_id, beatmap_id);
 CREATE INDEX idx_votes_beatmap ON votes(beatmap_id);
 CREATE INDEX idx_votes_dan ON votes(beatmap_id, dan_level);
 
+-- Short-lived browser-to-in-game login handoff. Browser localStorage and the
+-- tosu:// renderer are isolated, so the renderer claims a token using a
+-- per-installation 256-bit secret embedded by scripts/sync-overlay.js.
+CREATE TABLE IF NOT EXISTS overlay_auth_sessions (
+    installation_hash CHAR(64) PRIMARY KEY,
+    token TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_overlay_auth_sessions_expires ON overlay_auth_sessions(expires_at);
+
 -- ====== RLS: Disable for all tables ======
 -- Auth is handled at the API route level (custom JWT), not via Supabase RLS
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE beatmaps DISABLE ROW LEVEL SECURITY;
 ALTER TABLE votes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE overlay_auth_sessions DISABLE ROW LEVEL SECURITY;
 
 -- Trigger function: update beatmaps.total_votes when votes change
 CREATE OR REPLACE FUNCTION update_beatmap_total_votes()
