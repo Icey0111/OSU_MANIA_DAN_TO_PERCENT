@@ -60,6 +60,6 @@ osu!mania Dan Voting 覆盖层 — 用户安装指南
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  在线服务: https://osu-mania-dan-to-percent.vercel.app
-  管理后台: https://osu-mania-dan-to-percent.vercel.app/admin
+  在线服务: https://osu-mania-dan-voting.top
+  管理后台: https://osu-mania-dan-voting.top/admin
   项目仓库: https://github.com/Icey0111/OSU_MANIA_DAN_TO_PERCENT
