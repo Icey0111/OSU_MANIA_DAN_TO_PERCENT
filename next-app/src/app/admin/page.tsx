@@ -10,8 +10,9 @@ interface DashboardData {
   total_users: number;
   recent_beatmaps: {
     id: number;
-    osu_beatmap_id: number;
-    beatmapset_id: number;
+    osu_beatmap_id: number | null;
+    beatmapset_id: number | null;
+    source_type: "osu" | "local";
     artist: string;
     title: string;
     version: string;

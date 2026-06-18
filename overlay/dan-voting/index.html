@@ -83,6 +83,15 @@ body {
   text-decoration: none;
 }
 .beatmap-card .song-link:hover { text-decoration: underline; }
+.local-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 216, 77, 0.35);
+  border-radius: 4px;
+  color: #ffd84d;
+  font-size: 10px;
+}
 
 /* Dan Grid */
 .section-title {
@@ -197,6 +206,219 @@ body {
   border-radius: 6px;
   margin-bottom: 8px;
 }
+
+/* Wide, display-only composition used by the in-game renderer. */
+body.ingame-renderer {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  background: transparent;
+  font-size: clamp(13px, 1.15vw, 22px);
+}
+body.ingame-renderer #app {
+  min-height: 100vh;
+  padding: clamp(18px, 3vh, 34px) clamp(24px, 2.7vw, 52px);
+}
+.ingame-renderer .top-panel {
+  width: min(50vw, 960px);
+  min-width: 560px;
+  padding: clamp(16px, 1.5vw, 28px);
+  background: rgba(20,20,20,0.9);
+  border-left: 4px solid #ff66aa;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.28);
+}
+.ingame-renderer .header {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+.ingame-renderer .header .title { font-size: clamp(18px, 1.55vw, 30px); }
+.ingame-renderer .header .user-info { font-size: clamp(13px, 1.15vw, 22px); }
+.ingame-renderer .beatmap-card {
+  margin-bottom: 0;
+  padding: clamp(14px, 1.2vw, 24px);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.07);
+}
+.ingame-renderer .beatmap-card .song-title { font-size: clamp(18px, 1.55vw, 30px); }
+.ingame-renderer .beatmap-card .song-version { font-size: clamp(17px, 1.45vw, 28px); }
+.ingame-renderer .beatmap-card .song-meta { font-size: clamp(13px, 1.1vw, 21px); margin-top: 8px; }
+.ingame-renderer .beatmap-card .song-link { font-size: clamp(12px, 1vw, 19px); margin-top: 8px; }
+.results-divider {
+  height: 4px;
+  margin: clamp(28px, 4.5vh, 54px) 0 0;
+  border-radius: 2px;
+  background: rgba(188,162,153,0.85);
+}
+.ingame-results-title {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 10px 18px;
+  background: rgba(20,20,20,0.92);
+  font-size: clamp(17px, 1.35vw, 26px);
+}
+.ingame-results {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vh, 24px);
+  margin-top: 0;
+}
+.ingame-result-row {
+  display: grid;
+  grid-template-columns: clamp(150px, 18vw, 340px) minmax(420px, 1fr) clamp(92px, 8vw, 154px);
+  align-items: center;
+  gap: clamp(20px, 4vw, 78px);
+  width: 92vw;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+.ingame-result-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 116px;
+  aspect-ratio: 1.15 / 1;
+  background: rgba(137,103,94,0.92);
+  color: #ff6337;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(76px, 10vw, 190px);
+  line-height: 1;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.ingame-results.result-count-1 .ingame-result-symbol {
+  width: min(27vw, 515px);
+  min-height: min(41vh, 448px);
+  font-size: clamp(150px, 18vw, 330px);
+}
+.ingame-results.result-count-1 .ingame-result-row {
+  grid-template-columns: min(27vw, 515px) minmax(420px, 1fr) clamp(92px, 8vw, 154px);
+}
+.ingame-result-bars {
+  padding: clamp(14px, 1.4vw, 26px);
+  background: rgba(20,20,20,0.92);
+  gap: clamp(5px, 0.6vh, 10px);
+}
+.ingame-renderer .result-bar-row {
+  gap: 10px;
+  font-size: clamp(14px, 1.15vw, 22px);
+}
+.ingame-renderer .result-bar-label { width: 52px; font-size: inherit; }
+.ingame-renderer .result-bar-track { height: clamp(16px, 2vh, 24px); border-radius: 12px; }
+.ingame-renderer .result-bar-count { width: clamp(78px, 6vw, 118px); font-size: inherit; }
+.ingame-result-total {
+  padding: 13px 10px;
+  background: rgba(20,20,20,0.92);
+  color: #aaa;
+  text-align: center;
+  white-space: nowrap;
+  font-size: clamp(13px, 1.05vw, 20px);
+}
+.ingame-empty-results {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 18px 24px;
+  background: rgba(20,20,20,0.9);
+  text-align: left;
+}
+
+/* Keep the sketch's information hierarchy inside the original compact panel. */
+body.ingame-renderer {
+  width: 420px;
+  height: auto;
+  min-height: 100px;
+  overflow-y: auto;
+  background: transparent;
+  font-size: 13px;
+}
+body.ingame-renderer #app {
+  width: 420px;
+  min-height: 0;
+  padding: 12px;
+  background: rgba(0,0,0,0.85);
+}
+.ingame-renderer .top-panel {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border-left: 0;
+  box-shadow: none;
+}
+.ingame-renderer .header { margin-bottom: 10px; padding-bottom: 8px; }
+.ingame-renderer .header .title { font-size: 14px; }
+.ingame-renderer .header .user-info { font-size: 11px; }
+.ingame-renderer .beatmap-card { margin-bottom: 0; padding: 10px; border-radius: 6px; }
+.ingame-renderer .beatmap-card .song-title { font-size: 14px; }
+.ingame-renderer .beatmap-card .song-version { font-size: 13px; }
+.ingame-renderer .beatmap-card .song-meta { font-size: 11px; margin-top: 3px; }
+.ingame-renderer .beatmap-card .song-link { font-size: 10px; margin-top: 3px; }
+.ingame-renderer .results-divider {
+  height: 1px;
+  margin: 12px 0 8px;
+  background: rgba(255,255,255,0.12);
+}
+.ingame-renderer .ingame-results-title {
+  display: block;
+  margin: 0 0 6px;
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.ingame-renderer .ingame-results { gap: 6px; }
+.ingame-renderer .ingame-result-row,
+.ingame-renderer .ingame-results.result-count-1 .ingame-result-row {
+  grid-template-columns: 76px minmax(0, 1fr) 44px;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 6px;
+  background: rgba(255,255,255,0.03);
+}
+.ingame-renderer .ingame-result-symbol,
+.ingame-renderer .ingame-results.result-count-1 .ingame-result-symbol {
+  width: 76px;
+  height: 76px;
+  min-height: 76px;
+  aspect-ratio: auto;
+  background: transparent;
+  font-size: 54px;
+  box-shadow: none;
+}
+.ingame-renderer .ingame-result-icon {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+.ingame-renderer .ingame-result-fallback {
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #ffd84d;
+}
+.ingame-renderer .ingame-result-bars {
+  padding: 4px 2px;
+  background: transparent;
+  gap: 2px;
+}
+.ingame-renderer .result-bar-row { gap: 4px; font-size: 10px; }
+.ingame-renderer .result-bar-label { width: 30px; }
+.ingame-renderer .result-bar-track { height: 9px; border-radius: 5px; }
+.ingame-renderer .result-bar-count { width: 48px; font-size: 10px; }
+.ingame-renderer .ingame-result-total {
+  padding: 8px 3px;
+  background: rgba(255,255,255,0.04);
+  font-size: 9px;
+}
+.ingame-renderer .ingame-empty-results {
+  display: block;
+  margin-top: 0;
+  padding: 12px;
+  background: transparent;
+  text-align: center;
+}
 </style>
 </head>
 <body>
@@ -211,6 +433,7 @@ const IS_INGAME_RENDERER =
   location.protocol === 'tosu:' ||
   new URLSearchParams(location.search).get('renderer') === 'ingame';
 const HAS_INSTALLATION_ID = /^[a-f0-9]{64}$/.test(INSTALLATION_ID);
+document.body.classList.toggle('ingame-renderer', IS_INGAME_RENDERER);
 
 const DAN_LEVELS = [
   '1','2','3','4','5','6','7',
@@ -227,6 +450,13 @@ const DAN_LABELS = {
 
 const TIERS = ['low', 'mid', 'high'];
 
+const DAN_ICON_FILES = {
+  '1':'1.png','2':'2.png','3':'3.png','4':'4.png','5':'5.png',
+  '6':'6.png','7':'7.png','8':'8.png','9':'9.png','10':'10.png',
+  'α':'alpha.png','β':'beta.png','γ':'gamma.png','δ':'delta.png',
+  'ε':'epsilon.png','ζ':'zeta.png','η':'eta.png'
+};
+
 // ==================== STATE ====================
 const state = {
   appState: 'INIT',          // INIT | NOT_CONNECTED | LOGGED_OUT | WAITING | BEATMAP_LOADED | VOTE_SUBMITTING | ERROR
@@ -238,7 +468,7 @@ const state = {
   token: null,               // JWT
   ws: null,
   reconnectAttempts: 0,
-  lastBeatmapId: null,
+  lastBeatmapKey: null,
   lastError: null,           // latest error message for display
   pollTimer: null,           // interval for auto-refreshing vote data
   authSyncTimer: null,       // polls browser-to-renderer login handoffs
@@ -268,7 +498,8 @@ function render() {
     headerRight = `<button class="btn btn-login" onclick="login()">Login with osu!</button>`;
   }
 
-  let html = `
+  let html = IS_INGAME_RENDERER ? `<div class="top-panel">` : '';
+  html += `
 <div class="header">
   <span class="title">Dan Voting</span>
   <div>${headerRight}</div>
@@ -281,12 +512,21 @@ function render() {
   // Beatmap info
   if (s.beatmap) {
     const bm = s.beatmap;
+    const resolvedBeatmap = s.voteData?.beatmap;
+    const isLocal = resolvedBeatmap?.source_type === 'local' ||
+      ((!Number.isSafeInteger(bm.id) || bm.id <= 0) && !!bm.checksum);
+    const metaLine = isLocal
+      ? `Local checksum ${esc((resolvedBeatmap?.file_checksum || bm.checksum || '').slice(0, 8))} • mapped by ${esc(bm.mapper || bm.creator)}`
+      : `Beatmapset #${bm.set} • mapped by ${esc(bm.mapper || bm.creator)}`;
+    const sourceLink = isLocal
+      ? `<span class="local-badge">Local / Unsubmitted</span>`
+      : `<a class="song-link" href="https://osu.ppy.sh/beatmapsets/${bm.set}#mania/${bm.id}" target="_blank">View on osu.ppy.sh →</a>`;
     html += `
 <div class="beatmap-card">
   <div class="song-title">${esc(bm.artist)} - ${esc(bm.title)}</div>
   <div class="song-version">[${esc(bm.version)}]</div>
-  <div class="song-meta">Beatmapset #${bm.set} • mapped by ${esc(bm.mapper || bm.creator)}</div>
-  <a class="song-link" href="https://osu.ppy.sh/beatmapsets/${bm.set}#mania/${bm.id}" target="_blank">View on osu.ppy.sh →</a>
+  <div class="song-meta">${metaLine}</div>
+  ${sourceLink}
 </div>`;
   } else if (s.appState === 'WAITING') {
     html += `<div class="message">Waiting for beatmap...<br><span style="font-size:10px;color:#666">Select a song to begin</span></div>`;
@@ -294,8 +534,12 @@ function render() {
     html += `<div class="message">Loading...</div>`;
   }
 
+  if (IS_INGAME_RENDERER) {
+    html += `</div><div class="results-divider"></div>`;
+  }
+
   // Voting panel (only shown when beatmap is loaded and user is logged in)
-  if (s.beatmap && s.user) {
+  if (s.beatmap && s.user && !IS_INGAME_RENDERER) {
     html += `<div class="section-title">Your Vote</div>`;
 
     // Dan grid - row 1: 1-7
@@ -334,20 +578,21 @@ function render() {
       ? '<span class="spinner"></span> Submitting...'
       : 'Submit Vote';
     html += `<button class="btn btn-primary submit-btn" ${canSubmit ? '' : 'disabled'} onclick="submitVote()">${submitText}</button>`;
-  } else if (s.beatmap && !s.user) {
-    if (IS_INGAME_RENDERER) {
-      html += `<div class="login-prompt">Open http://127.0.0.1:24050/dan-voting/<br>in your browser to log in</div>`;
-    } else {
-      html += `<div class="login-prompt">Login with osu! to vote<br><button class="btn btn-login" style="margin-top:6px" onclick="login()">Login with osu!</button></div>`;
-    }
+  } else if (s.beatmap && !s.user && !IS_INGAME_RENDERER) {
+    html += `<div class="login-prompt">Login with osu! to vote<br><button class="btn btn-login" style="margin-top:6px" onclick="login()">Login with osu!</button></div>`;
   }
 
   // Results section
   if (s.voteData && s.voteData.distribution && Object.keys(s.voteData.distribution).length > 0) {
     const dist = s.voteData.distribution;
     const total = s.voteData.beatmap?.total_votes || 0;
-    html += `<div class="section-title">Results (${total} vote${total !== 1 ? 's' : ''})</div>`;
-    html += `<div class="results-section">`;
+    const resultCount = Object.keys(dist).length;
+    const titleClass = IS_INGAME_RENDERER ? 'section-title ingame-results-title' : 'section-title';
+    const resultsClass = IS_INGAME_RENDERER
+      ? `results-section ingame-results result-count-${resultCount}`
+      : 'results-section';
+    html += `<div class="${titleClass}">Results (${total} vote${total !== 1 ? 's' : ''})</div>`;
+    html += `<div class="${resultsClass}">`;
 
     for (const [dan, tiers] of Object.entries(dist)) {
       const danTotal = tiers.low + tiers.mid + tiers.high;
@@ -355,9 +600,19 @@ function render() {
       const isUserVote = s.voteData.user_vote && s.voteData.user_vote.dan_level === dan;
 
       const danName = isUserVote ? `★ ${label}` : label;
-      html += `<div class="result-row">
-        <div class="result-dan"><span>${danName}</span><span class="result-dan-total">${danTotal} vote${danTotal !== 1 ? 's' : ''}</span></div>
-        <div class="result-bar-group">`;
+      if (IS_INGAME_RENDERER) {
+        const danIconFile = DAN_ICON_FILES[dan];
+        html += `<div class="result-row ingame-result-row">
+          <div class="ingame-result-symbol">
+            <img class="ingame-result-icon" src="./icons/${esc(danIconFile)}" alt="${esc(dan)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+            <span class="ingame-result-fallback" hidden>${esc(dan)}</span>
+          </div>
+          <div class="result-bar-group ingame-result-bars">`;
+      } else {
+        html += `<div class="result-row">
+          <div class="result-dan"><span>${danName}</span><span class="result-dan-total">${danTotal} vote${danTotal !== 1 ? 's' : ''}</span></div>
+          <div class="result-bar-group">`;
+      }
 
       for (const tier of TIERS) {
         const count = tiers[tier];
@@ -372,14 +627,20 @@ function render() {
           </div>`;
       }
 
-      html += `</div></div>`;
+      html += IS_INGAME_RENDERER
+        ? `</div><div class="ingame-result-total">${danTotal} vote${danTotal !== 1 ? 's' : ''}</div></div>`
+        : `</div></div>`;
     }
     html += `</div>`;
   } else if (s.beatmap) {
-    html += `<div class="section-title">Results</div><div class="message">No votes yet — be the first!</div>`;
+    const emptyClass = IS_INGAME_RENDERER ? 'message ingame-empty-results' : 'message';
+    const titleClass = IS_INGAME_RENDERER ? 'section-title ingame-results-title' : 'section-title';
+    html += `<div class="${titleClass}">Results</div><div class="${emptyClass}">No votes yet — be the first!</div>`;
   }
 
-  html += `<div style="height:20px;text-align:center;font-size:10px;color:#555">press F5 to refresh • dan-voting</div>`;
+  if (!IS_INGAME_RENDERER) {
+    html += `<div style="height:20px;text-align:center;font-size:10px;color:#555">press F5 to refresh • dan-voting</div>`;
+  }
   app.innerHTML = html;
 }
 
@@ -415,7 +676,7 @@ function connectWS() {
     state.ws.send(JSON.stringify({
       applyFilters: [{
         field: 'beatmap',
-        keys: ['id','set','artist','title','version','mapper','creator','mode','status']
+        keys: ['id','set','checksum','artist','title','version','mapper','creator','mode','status']
       }]
     }));
     render();
@@ -452,7 +713,11 @@ function scheduleReconnect() {
 function handleBeatmapData(bm) {
   // tosu V2: mode is {number, name}, V1: mode is plain number
   const mode = typeof bm.mode === 'object' ? bm.mode.number : bm.mode;
-  console.log(`[handleBeatmapData] beatmap=${bm.id} mode=${mode} last=${state.lastBeatmapId}`);
+  const checksum = typeof bm.checksum === 'string' ? bm.checksum.trim().toLowerCase() : '';
+  const hasChecksum = /^[0-9a-f]{32}$/.test(checksum);
+  const hasOfficialId = Number.isSafeInteger(bm.id) && bm.id > 0;
+  const beatmapKey = `${hasOfficialId ? bm.id : 'local'}:${hasChecksum ? checksum : 'no-checksum'}`;
+  console.log(`[handleBeatmapData] beatmap=${bm.id} checksum=${checksum} mode=${mode} last=${state.lastBeatmapKey}`);
 
   // Only process mania beatmaps (mode 3 = mania)
   if (mode !== 3) {
@@ -469,14 +734,14 @@ function handleBeatmapData(bm) {
     return;
   }
 
-  if (!bm.id || bm.id === state.lastBeatmapId) {
-    console.log(`[handleBeatmapData] SKIP id=${bm.id}`);
+  if ((!hasOfficialId && !hasChecksum) || beatmapKey === state.lastBeatmapKey) {
+    console.log(`[handleBeatmapData] SKIP key=${beatmapKey}`);
     return;
   }
 
-  console.log(`[handleBeatmapData] NEW beatmap id=${bm.id} resetting dan=${state.selectedDan}`);
-  state.lastBeatmapId = bm.id;
-  state.beatmap = bm;
+  console.log(`[handleBeatmapData] NEW beatmap key=${beatmapKey} resetting dan=${state.selectedDan}`);
+  state.lastBeatmapKey = beatmapKey;
+  state.beatmap = { ...bm, checksum };
   state.voteData = null;
   state.selectedDan = null;
   state.selectedTier = null;
@@ -484,7 +749,7 @@ function handleBeatmapData(bm) {
   render();
 
   // Fetch vote data for this beatmap, then start auto-polling
-  fetchVoteData(bm.id, false, 'beatmap');
+  fetchVoteData(state.beatmap, false, 'beatmap');
   startPolling();
 }
 
@@ -533,9 +798,16 @@ async function apiPost(path, body) {
 
 // keepSelection=true: only update distribution/beatmap, preserve user_vote AND selection
 // keepSelection=false: full sync including user_vote + selectedDan/selectedTier (initial load)
-async function fetchVoteData(beatmapId, keepSelection = false, caller = 'unknown') {
-  console.log(`[fetchVoteData] caller=${caller} beatmap=${beatmapId} keepSelection=${keepSelection} selectedDan=${state.selectedDan}`);
-  const { status, data } = await apiGet(`/api/beatmaps/${beatmapId}?_t=${Date.now()}`);
+async function fetchVoteData(beatmap, keepSelection = false, caller = 'unknown') {
+  const params = new URLSearchParams({ _t: String(Date.now()) });
+  if (Number.isSafeInteger(beatmap.id) && beatmap.id > 0) {
+    params.set('osu_beatmap_id', String(beatmap.id));
+  }
+  if (/^[0-9a-f]{32}$/.test(beatmap.checksum || '')) {
+    params.set('checksum', beatmap.checksum);
+  }
+  console.log(`[fetchVoteData] caller=${caller} beatmap=${beatmap.id} checksum=${beatmap.checksum || ''} keepSelection=${keepSelection} selectedDan=${state.selectedDan}`);
+  const { status, data } = await apiGet(`/api/beatmaps/resolve?${params.toString()}`);
   if (status === 200) {
     state.lastError = null;
     console.log(`[fetchVoteData] ${caller} GET ok user_vote=${JSON.stringify(data.user_vote)}`);
@@ -567,7 +839,7 @@ function startPolling() {
   state.pollTimer = setInterval(() => {
     if (state.beatmap && state.appState !== 'VOTE_SUBMITTING') {
       console.log(`[poll] tick appState=${state.appState}`);
-      fetchVoteData(state.beatmap.id, true, 'poll');
+      fetchVoteData(state.beatmap, true, 'poll');
     } else {
       console.log(`[poll] SKIP beatmap=${!!state.beatmap} appState=${state.appState}`);
     }
@@ -613,7 +885,15 @@ async function submitVote() {
 
   const bm = state.beatmap;
   const { status, data } = await apiPost('/api/votes', {
-    osu_beatmap_id: bm.id,
+    beatmap: {
+      osu_beatmap_id: bm.id,
+      checksum: bm.checksum,
+      artist: bm.artist,
+      title: bm.title,
+      version: bm.version,
+      mapper: bm.mapper || bm.creator,
+      mode: typeof bm.mode === 'object' ? bm.mode.number : bm.mode,
+    },
     dan_level: chosenDan,
     tier: chosenTier,
   });
@@ -672,7 +952,7 @@ window.addEventListener('message', (event) => {
 
     // Re-fetch vote data with auth
     if (state.beatmap) {
-      fetchVoteData(state.beatmap.id, false, 'login');
+      fetchVoteData(state.beatmap, false, 'login');
     }
   }
 });
@@ -728,7 +1008,7 @@ function logout() {
 
   // Re-fetch without auth
   if (state.beatmap) {
-    fetchVoteData(state.beatmap.id, false, 'logout');
+    fetchVoteData(state.beatmap, false, 'logout');
   }
 }
 

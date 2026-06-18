@@ -83,6 +83,9 @@ set /p INSTALL_ID=<"%INSTALL_FILE%"
 REM 复制 HTML 并替换安装 ID 占位符
 powershell -NoProfile -Command "$html = Get-Content '%~dp0dan-voting\index.html' -Raw -Encoding UTF8; $html = $html.Replace('__DAN_VOTING_INSTALLATION_ID__', '%INSTALL_ID%'); Set-Content '%DEST%\index.html' -Value $html -Encoding UTF8 -NoNewline"
 
+REM 复制图标等资源目录
+if exist "%~dp0dan-voting\icons" xcopy /E /I /Y "%~dp0dan-voting\icons" "%DEST%\icons" >nul
+
 REM 复制 README（如果有）
 if exist "%~dp0README.txt" copy /Y "%~dp0README.txt" "%DEST%\" >nul 2>&1
 

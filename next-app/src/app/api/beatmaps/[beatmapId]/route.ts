@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, extractBearerToken } from "@/lib/auth";
+import { extractBearerToken, verifyToken } from "@/lib/auth";
+import { BEATMAP_SELECT, BeatmapRecord, buildVoteResults } from "@/lib/beatmaps";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
-import { DAN_ORDER } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,8 +14,8 @@ export async function GET(
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
 
-  const beatmapId = parseInt(params.beatmapId, 10);
-  if (isNaN(beatmapId)) {
+  const beatmapId = Number(params.beatmapId);
+  if (!Number.isSafeInteger(beatmapId) || beatmapId <= 0) {
     return applyCorsHeaders(
       NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 }),
       request
@@ -23,15 +23,15 @@ export async function GET(
   }
 
   const db = getSupabaseAdmin();
-
-  // Lookup beatmap
-  const { data: beatmap, error: beatmapError } = await db
+  const { data } = await db
     .from("beatmaps")
-    .select("*")
+    .select(BEATMAP_SELECT)
+    .eq("source_type", "osu")
     .eq("osu_beatmap_id", beatmapId)
-    .single();
+    .maybeSingle();
+  const beatmap = data as BeatmapRecord | null;
 
-  if (beatmapError || !beatmap) {
+  if (!beatmap) {
     return applyCorsHeaders(
       NextResponse.json({
         beatmap: null,
@@ -43,77 +43,23 @@ export async function GET(
     );
   }
 
-  // Get vote distribution (deduplicated by user_id — keep last row)
-  const { data: allVotes } = await db
-    .from("votes")
-    .select("dan_level, tier, user_id")
-    .eq("beatmap_id", beatmap.id)
-    .order("created_at", { ascending: true });
-
-  // Deduplicate: keep only the last vote per user (handles legacy duplicate rows)
-  const dedupedVotes: Record<string, { dan_level: string; tier: string }> = {};
-  if (allVotes) {
-    for (const v of allVotes) {
-      dedupedVotes[v.user_id] = { dan_level: v.dan_level, tier: v.tier };
-    }
-  }
-
-  // Build distribution map from deduped votes
-  const distribution: Record<string, { low: number; mid: number; high: number }> = {};
-  for (const dv of Object.values(dedupedVotes)) {
-    if (!distribution[dv.dan_level]) {
-      distribution[dv.dan_level] = { low: 0, mid: 0, high: 0 };
-    }
-    distribution[dv.dan_level][dv.tier as "low" | "mid" | "high"]++;
-  }
-
-  // Sort by dan order
-  const sortedDistribution: Record<string, { low: number; mid: number; high: number }> = {};
-  const sortedKeys = Object.keys(distribution).sort(
-    (a, b) => (DAN_ORDER[a as keyof typeof DAN_ORDER] || 99) - (DAN_ORDER[b as keyof typeof DAN_ORDER] || 99)
-  );
-  for (const key of sortedKeys) {
-    sortedDistribution[key] = distribution[key];
-  }
-
-  // Get current user's vote if authenticated.
-  // Use filter().at(-1) instead of find() so that if duplicate rows exist
-  // (e.g. left over from a broken upsert), we always pick the last row.
-  let userVote = null;
+  let userId: number | undefined;
   const token = extractBearerToken(request);
   if (token) {
     const payload = await verifyToken(token);
-    if (payload) {
-      const userRows = allVotes?.filter((v) => v.user_id === payload.sub);
-      if (userRows && userRows.length > 0) {
-        const last = userRows[userRows.length - 1];
-        userVote = {
-          dan_level: last.dan_level,
-          tier: last.tier,
-        };
-      }
-    }
+    if (payload) userId = payload.sub;
   }
 
-  const dedupedCount = Object.keys(dedupedVotes).length;
-
-  const response = applyCorsHeaders(
-    NextResponse.json({
-      beatmap: {
-        osu_beatmap_id: beatmap.osu_beatmap_id,
-        beatmapset_id: beatmap.beatmapset_id,
-        artist: beatmap.artist,
-        title: beatmap.title,
-        version: beatmap.version,
-        creator: beatmap.creator,
-        total_votes: dedupedCount,
-        url: `https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}#mania/${beatmap.osu_beatmap_id}`,
-      },
-      distribution: sortedDistribution,
-      user_vote: userVote,
-    }),
-    request
-  );
-  response.headers.set("Cache-Control", "no-store, max-age=0");
-  return response;
+  try {
+    const results = await buildVoteResults(db, beatmap, userId);
+    const response = applyCorsHeaders(NextResponse.json(results), request);
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    return response;
+  } catch (error) {
+    console.error("Beatmap results query failed:", error);
+    return applyCorsHeaders(
+      NextResponse.json({ error: "Failed to load beatmap results" }, { status: 500 }),
+      request
+    );
+  }
 }

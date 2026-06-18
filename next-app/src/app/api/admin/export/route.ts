@@ -3,8 +3,10 @@ import { verifyToken, extractCookieToken } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/db";
 
 interface BeatmapJoined {
-  osu_beatmap_id: number;
-  beatmapset_id: number;
+  osu_beatmap_id: number | null;
+  beatmapset_id: number | null;
+  source_type: "osu" | "local";
+  file_checksum: string | null;
   artist: string;
   title: string;
   version: string;
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
       updated_at,
       beatmap_id,
       user_id,
-      beatmaps!inner(osu_beatmap_id, beatmapset_id, artist, title, version, creator, total_votes),
+      beatmaps!inner(osu_beatmap_id, beatmapset_id, source_type, file_checksum, artist, title, version, creator, total_votes),
       users!inner(osu_id, osu_username)
     `)
     .order("created_at", { ascending: false });
@@ -64,8 +66,10 @@ export async function GET(request: NextRequest) {
   // Build CSV
   const headers = [
     "Vote ID",
+    "Source Type",
     "osu_beatmap_id",
     "beatmapset_id",
+    "File Checksum",
     "Artist",
     "Title",
     "Version",
@@ -85,8 +89,10 @@ export async function GET(request: NextRequest) {
     const user = row.users;
     const csvRow = [
       row.id,
-      beatmap.osu_beatmap_id,
-      beatmap.beatmapset_id,
+      beatmap.source_type,
+      beatmap.osu_beatmap_id ?? "",
+      beatmap.beatmapset_id ?? "",
+      beatmap.file_checksum ?? "",
       `"${beatmap.artist.replace(/"/g, '""')}"`,
       `"${beatmap.title.replace(/"/g, '""')}"`,
       `"${beatmap.version.replace(/"/g, '""')}"`,

@@ -58,7 +58,7 @@ function sync() {
     fs.writeFileSync(installationIdPath, installationId, "utf8");
   }
 
-  // 复制所有文件
+  // 复制所有文件和资源目录
   const files = fs.readdirSync(SOURCE_DIR);
   for (const file of files) {
     const src = path.join(SOURCE_DIR, file);
@@ -73,6 +73,9 @@ function sync() {
         fs.copyFileSync(src, dest);
       }
       console.log(`[OK] ${file} → ${destDir}`);
+    } else if (fs.statSync(src).isDirectory()) {
+      fs.cpSync(src, dest, { recursive: true, force: true });
+      console.log(`[OK] ${file}/ → ${destDir}`);
     }
   }
 

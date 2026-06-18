@@ -17,19 +17,39 @@ CREATE INDEX idx_users_osu_id ON users(osu_id);
 -- Beatmaps table: stores beatmap difficulty metadata
 CREATE TABLE IF NOT EXISTS beatmaps (
     id SERIAL PRIMARY KEY,
-    osu_beatmap_id INTEGER UNIQUE NOT NULL,
-    beatmapset_id INTEGER NOT NULL,
+    osu_beatmap_id INTEGER UNIQUE,
+    beatmapset_id INTEGER,
+    source_type VARCHAR(8) NOT NULL DEFAULT 'osu',
+    file_checksum CHAR(32) UNIQUE,
+    checksum_algorithm VARCHAR(8),
+    mode SMALLINT NOT NULL DEFAULT 3,
     artist VARCHAR(256) NOT NULL,
     title VARCHAR(256) NOT NULL,
     version VARCHAR(256) NOT NULL,
     creator VARCHAR(64) NOT NULL,
     total_votes INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT beatmaps_source_identity_check CHECK (
+        (
+            source_type = 'osu'
+            AND osu_beatmap_id IS NOT NULL AND osu_beatmap_id > 0
+            AND beatmapset_id IS NOT NULL AND beatmapset_id > 0
+            AND file_checksum IS NULL AND checksum_algorithm IS NULL
+        )
+        OR
+        (
+            source_type = 'local'
+            AND osu_beatmap_id IS NULL AND beatmapset_id IS NULL
+            AND file_checksum ~ '^[0-9a-f]{32}$'
+            AND checksum_algorithm = 'md5'
+        )
+    )
 );
 
 CREATE INDEX idx_beatmaps_osu_id ON beatmaps(osu_beatmap_id);
 CREATE INDEX idx_beatmaps_beatmapset ON beatmaps(beatmapset_id);
+CREATE INDEX idx_beatmaps_source_type ON beatmaps(source_type);
 
 -- Votes table: individual user votes, one per user per beatmap
 CREATE TABLE IF NOT EXISTS votes (

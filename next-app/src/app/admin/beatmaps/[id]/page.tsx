@@ -7,14 +7,16 @@ import { DAN_LABELS, DAN_LEVELS } from "@/lib/validation";
 
 interface BeatmapData {
   beatmap: {
-    osu_beatmap_id: number;
-    beatmapset_id: number;
+    osu_beatmap_id: number | null;
+    beatmapset_id: number | null;
+    source_type: "osu" | "local";
+    file_checksum: string | null;
     artist: string;
     title: string;
     version: string;
     creator: string;
     total_votes: number;
-    url: string;
+    url: string | null;
   };
   distribution: Record<string, { low: number; mid: number; high: number }>;
 }
@@ -47,7 +49,7 @@ export default function BeatmapDetailPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/beatmaps/${beatmapId}`);
+        const res = await fetch(`/api/admin/beatmaps/${beatmapId}`);
         if (res.ok) {
           setData(await res.json());
         }
@@ -109,7 +111,11 @@ export default function BeatmapDetailPage() {
         <div className="flex items-center gap-3 mt-2 text-gray-400">
           <span className="text-pink-400">[{beatmap.version}]</span>
           <span>•</span>
-          <span>Beatmapset #{beatmap.beatmapset_id}</span>
+          <span>
+            {beatmap.source_type === "local"
+              ? `Local checksum ${beatmap.file_checksum?.slice(0, 8)}`
+              : `Beatmapset #${beatmap.beatmapset_id}`}
+          </span>
           <span>•</span>
           <span>mapped by {beatmap.creator}</span>
         </div>
@@ -117,14 +123,18 @@ export default function BeatmapDetailPage() {
           <span className="px-3 py-1 bg-pink-600/20 text-pink-400 rounded-lg text-sm">
             {beatmap.total_votes} votes
           </span>
-          <a
-            href={beatmap.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:underline text-sm"
-          >
-            View on osu.ppy.sh →
-          </a>
+          {beatmap.url ? (
+            <a
+              href={beatmap.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline text-sm"
+            >
+              View on osu.ppy.sh →
+            </a>
+          ) : (
+            <span className="text-yellow-400 text-sm">Local / Unsubmitted</span>
+          )}
         </div>
       </div>
 

@@ -5,8 +5,10 @@ import Link from "next/link";
 
 interface Beatmap {
   id: number;
-  osu_beatmap_id: number;
-  beatmapset_id: number;
+  osu_beatmap_id: number | null;
+  beatmapset_id: number | null;
+  source_type: "osu" | "local";
+  file_checksum: string | null;
   artist: string;
   title: string;
   version: string;
@@ -115,14 +117,21 @@ export default function AdminBeatmapsPage() {
                 >
                   <td className="p-4">
                     <Link
-                      href={`/admin/beatmaps/${b.osu_beatmap_id}`}
+                      href={`/admin/beatmaps/${b.id}`}
                       className="hover:text-pink-400 transition-colors"
                     >
                       <span className="font-medium">{b.artist} - {b.title}</span>
                       <span className="text-gray-500 ml-2">[{b.version}]</span>
+                      {b.source_type === "local" && (
+                        <span className="ml-2 px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 text-xs">
+                          Local
+                        </span>
+                      )}
                     </Link>
                   </td>
-                  <td className="p-4 text-gray-400">{b.beatmapset_id}</td>
+                  <td className="p-4 text-gray-400">
+                    {b.beatmapset_id ?? b.file_checksum?.slice(0, 8) ?? "--"}
+                  </td>
                   <td className="p-4 text-gray-400">{b.creator}</td>
                   <td className="p-4">
                     <span className="px-2 py-1 bg-pink-600/20 text-pink-400 rounded text-sm">

@@ -37,11 +37,11 @@ export async function GET(
 
   const db = getSupabaseAdmin();
 
-  // Lookup beatmap by osu_beatmap_id
+  // Admin routes use the stable internal primary key for both official and local maps.
   const { data: beatmap, error: beatmapError } = await db
     .from("beatmaps")
-    .select("id, osu_beatmap_id, artist, title, version")
-    .eq("osu_beatmap_id", beatmapId)
+    .select("id, osu_beatmap_id, source_type, file_checksum, artist, title, version")
+    .eq("id", beatmapId)
     .single();
 
   if (beatmapError || !beatmap) {
@@ -94,6 +94,8 @@ export async function GET(
 
   return NextResponse.json({
     osu_beatmap_id: beatmap.osu_beatmap_id,
+    source_type: beatmap.source_type,
+    file_checksum: beatmap.file_checksum,
     beatmap: {
       artist: beatmap.artist,
       title: beatmap.title,
