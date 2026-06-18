@@ -21,6 +21,11 @@ export async function GET(request: NextRequest) {
     .from("beatmaps")
     .select("*", { count: "exact", head: true });
 
+  // Total users
+  const { count: totalUsers } = await db
+    .from("users")
+    .select("*", { count: "exact", head: true });
+
   // Total votes
   const { count: totalVotes } = await db
     .from("votes")
@@ -46,6 +51,7 @@ export async function GET(request: NextRequest) {
     total_beatmaps: totalBeatmaps || 0,
     total_votes: totalVotes || 0,
     total_voters: uniqueVoterCount,
+    total_users: totalUsers || 0,
     recent_beatmaps: recentBeatmaps || [],
   });
 }

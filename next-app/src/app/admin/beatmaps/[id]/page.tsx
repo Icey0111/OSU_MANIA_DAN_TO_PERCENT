@@ -19,6 +19,17 @@ interface BeatmapData {
   distribution: Record<string, { low: number; mid: number; high: number }>;
 }
 
+interface Voter {
+  user_id: number;
+  osu_id: number;
+  osu_username: string;
+  avatar_url: string | null;
+  dan_level: string;
+  dan_label: string;
+  tier: string;
+  voted_at: string;
+}
+
 const COLORS = {
   low: "#f97316",  // orange
   mid: "#eab308",  // yellow
@@ -30,6 +41,8 @@ export default function BeatmapDetailPage() {
   const beatmapId = params.id as string;
   const [data, setData] = useState<BeatmapData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [voters, setVoters] = useState<Voter[]>([]);
+  const [votersLoading, setVotersLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -45,6 +58,24 @@ export default function BeatmapDetailPage() {
       }
     }
     load();
+  }, [beatmapId]);
+
+  useEffect(() => {
+    async function loadVoters() {
+      setVotersLoading(true);
+      try {
+        const res = await fetch(`/api/admin/beatmaps/${beatmapId}/voters`);
+        if (res.ok) {
+          const d = await res.json();
+          setVoters(d.voters || []);
+        }
+      } catch (err) {
+        console.error("Failed to load voters:", err);
+      } finally {
+        setVotersLoading(false);
+      }
+    }
+    loadVoters();
   }, [beatmapId]);
 
   if (loading) {
@@ -170,6 +201,80 @@ export default function BeatmapDetailPage() {
                   No votes recorded for this beatmap.
                 </td>
               </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Voters */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mt-8">
+        <h2 className="text-xl font-semibold p-6 pb-4">
+          Voters {!votersLoading && `(${voters.length})`}
+        </h2>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-800 text-left">
+              <th className="p-4 text-sm text-gray-400">User</th>
+              <th className="p-4 text-sm text-gray-400">Dan Level</th>
+              <th className="p-4 text-sm text-gray-400">Tier</th>
+              <th className="p-4 text-sm text-gray-400">Voted At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {votersLoading ? (
+              <tr>
+                <td colSpan={4} className="p-8 text-center text-gray-500">
+                  Loading voters...
+                </td>
+              </tr>
+            ) : voters.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="p-8 text-center text-gray-500">
+                  No votes recorded for this beatmap.
+                </td>
+              </tr>
+            ) : (
+              voters.map((v) => (
+                <tr
+                  key={v.user_id}
+                  className="border-b border-gray-800/50 hover:bg-gray-800/50 transition-colors"
+                >
+                  <td className="p-4">
+                    <a
+                      href={`https://osu.ppy.sh/users/${v.osu_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 hover:text-pink-400 transition-colors"
+                    >
+                      {v.avatar_url ? (
+                        <img
+                          src={v.avatar_url}
+                          alt=""
+                          className="w-6 h-6 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-gray-700" />
+                      )}
+                      <span className="font-medium">{v.osu_username}</span>
+                    </a>
+                  </td>
+                  <td className="p-4">{v.dan_label}</td>
+                  <td className="p-4">
+                    <span
+                      className="px-2 py-0.5 rounded text-xs"
+                      style={{
+                        backgroundColor: COLORS[v.tier as keyof typeof COLORS] + "20",
+                        color: COLORS[v.tier as keyof typeof COLORS],
+                      }}
+                    >
+                      {v.tier}
+                    </span>
+                  </td>
+                  <td className="p-4 text-gray-500 text-sm">
+                    {new Date(v.voted_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

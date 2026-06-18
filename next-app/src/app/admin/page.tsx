@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 interface DashboardData {
   total_beatmaps: number;
   total_votes: number;
   total_voters: number;
+  total_users: number;
   recent_beatmaps: {
     id: number;
     osu_beatmap_id: number;
@@ -24,11 +26,12 @@ interface StatCard {
   value: string | number;
   color: string;
   loading?: boolean;
+  href?: string;
 }
 
 function StatCard({ label, value, color }: StatCard) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-pink-800 transition-colors cursor-pointer">
       <p className="text-gray-400 text-sm mb-1">{label}</p>
       <p className={`text-3xl font-bold ${color}`}>{value}</p>
     </div>
@@ -65,7 +68,8 @@ export default function AdminDashboardPage() {
   const stats = [
     { label: "Total Beatmaps", value: data?.total_beatmaps ?? "--", color: "text-pink-400" },
     { label: "Total Votes", value: data?.total_votes ?? "--", color: "text-blue-400" },
-    { label: "Unique Voters", value: data?.total_voters ?? "--", color: "text-green-400" },
+    { label: "Unique Voters", value: data?.total_voters ?? "--", color: "text-green-400", href: "/admin/users" },
+    { label: "Total Users", value: data?.total_users ?? "--", color: "text-purple-400" },
   ];
 
   return (
@@ -82,9 +86,17 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        {stats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+      <div className="grid grid-cols-4 gap-6 mb-8">
+        {stats.map(({ href, ...cardProps }) => (
+          <div key={cardProps.label}>
+            {href ? (
+              <Link href={href}>
+                <StatCard {...cardProps} />
+              </Link>
+            ) : (
+              <StatCard {...cardProps} />
+            )}
+          </div>
         ))}
       </div>
 
