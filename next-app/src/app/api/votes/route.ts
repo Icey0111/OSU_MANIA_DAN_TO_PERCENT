@@ -3,6 +3,7 @@ import { verifyToken, extractBearerToken } from "@/lib/auth";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
 import { isValidDanLevel, isValidTier, DAN_ORDER } from "@/lib/validation";
+import { getOsuBeatmap, OsuApiError } from "@/lib/osu";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,11 +32,6 @@ export async function POST(request: NextRequest) {
   // Parse and validate body
   let body: {
     osu_beatmap_id: number;
-    beatmapset_id: number;
-    artist: string;
-    title: string;
-    version: string;
-    creator: string;
     dan_level: string;
     tier: string;
   };
@@ -49,20 +45,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validate required fields
-  if (
-    !body.osu_beatmap_id ||
-    !body.beatmapset_id ||
-    !body.artist ||
-    !body.title ||
-    !body.version ||
-    !body.creator
-  ) {
+  if (!Number.isSafeInteger(body.osu_beatmap_id) || body.osu_beatmap_id <= 0) {
     return applyCorsHeaders(
-      NextResponse.json(
-        { error: "Missing required fields: osu_beatmap_id, beatmapset_id, artist, title, version, creator" },
-        { status: 400 }
-      ),
+      NextResponse.json({ error: "Invalid osu_beatmap_id" }, { status: 400 }),
       request
     );
   }
@@ -81,6 +66,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let verifiedBeatmap;
+  try {
+    verifiedBeatmap = await getOsuBeatmap(body.osu_beatmap_id);
+  } catch (error) {
+    if (error instanceof OsuApiError) {
+      const status = error.code === "not_found" ? 404 : error.code === "not_mania" ? 422 : 503;
+      return applyCorsHeaders(
+        NextResponse.json({ error: error.message }, { status }),
+        request
+      );
+    }
+    throw error;
+  }
+
   let db;
   try {
     db = getSupabaseAdmin();
@@ -97,12 +96,7 @@ export async function POST(request: NextRequest) {
     .from("beatmaps")
     .upsert(
       {
-        osu_beatmap_id: body.osu_beatmap_id,
-        beatmapset_id: body.beatmapset_id,
-        artist: body.artist,
-        title: body.title,
-        version: body.version,
-        creator: body.creator,
+        ...verifiedBeatmap,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "osu_beatmap_id" }

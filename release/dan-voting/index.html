@@ -614,11 +614,6 @@ async function submitVote() {
   const bm = state.beatmap;
   const { status, data } = await apiPost('/api/votes', {
     osu_beatmap_id: bm.id,
-    beatmapset_id: bm.set,
-    artist: bm.artist,
-    title: bm.title,
-    version: bm.version,
-    creator: bm.mapper || bm.creator,
     dan_level: chosenDan,
     tier: chosenTier,
   });
