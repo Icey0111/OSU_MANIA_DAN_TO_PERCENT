@@ -4,6 +4,19 @@
 
 **在线地址:** https://osu-mania-dan-to-percent.vercel.app
 
+**用户端下载:** [release.zip (v1.0.0)](https://github.com/Icey0111/OSU_MANIA_DAN_TO_PERCENT/releases/latest)
+
+## 玩家使用（只安装覆盖层）
+
+如果你只是想在游戏内使用投票覆盖层，不需要部署整个网站：
+
+1. 下载 [最新 release.zip](https://github.com/Icey0111/OSU_MANIA_DAN_TO_PERCENT/releases/latest) 并解压
+2. 确保 [tosu](https://github.com/tosuapp/tosu) 正在运行
+3. 双击 `install.bat`，输入 tosu 目录
+4. 在 OBS 中添加浏览器源: `http://localhost:24050/dan-voting/`
+
+详细说明见 `README.txt`（包含在 zip 内）。
+
 ## 项目概览
 
 ```
