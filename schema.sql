@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS beatmaps (
     source_type VARCHAR(8) NOT NULL DEFAULT 'osu',
     file_checksum CHAR(32) UNIQUE,
     checksum_algorithm VARCHAR(8),
+    official_file_checksum CHAR(32),
     mode SMALLINT NOT NULL DEFAULT 3,
     artist VARCHAR(256) NOT NULL,
     title VARCHAR(256) NOT NULL,
@@ -85,6 +86,25 @@ ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE beatmaps DISABLE ROW LEVEL SECURITY;
 ALTER TABLE votes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE overlay_auth_sessions DISABLE ROW LEVEL SECURITY;
+
+-- Local-to-official promotions are performed by the transactional
+-- promote_local_beatmap function in the Supabase migrations.
+CREATE TABLE IF NOT EXISTS beatmap_promotion_audits (
+    id BIGSERIAL PRIMARY KEY,
+    local_beatmap_id INTEGER NOT NULL,
+    official_beatmap_id INTEGER NOT NULL,
+    target_beatmap_id INTEGER REFERENCES beatmaps(id) ON DELETE SET NULL,
+    promoted_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    local_file_checksum CHAR(32) NOT NULL,
+    official_file_checksum CHAR(32),
+    local_snapshot JSONB NOT NULL,
+    official_snapshot JSONB NOT NULL,
+    match_method VARCHAR(32) NOT NULL,
+    moved_votes INTEGER NOT NULL,
+    duplicate_votes INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE beatmap_promotion_audits DISABLE ROW LEVEL SECURITY;
 
 -- Trigger function: update beatmaps.total_votes when votes change
 CREATE OR REPLACE FUNCTION update_beatmap_total_votes()

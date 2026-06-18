@@ -19,6 +19,17 @@ interface BeatmapData {
     url: string | null;
   };
   distribution: Record<string, { low: number; mid: number; high: number }>;
+  promotion_history: Array<{
+    id: number;
+    local_beatmap_id: number;
+    official_beatmap_id: number;
+    local_file_checksum: string;
+    official_file_checksum: string | null;
+    match_method: "exact_checksum" | "admin_confirmed";
+    moved_votes: number;
+    duplicate_votes: number;
+    created_at: string;
+  }>;
 }
 
 interface Voter {
@@ -31,6 +42,32 @@ interface Voter {
   dan_label: string;
   tier: string;
   voted_at: string;
+}
+
+interface PromotionPreview {
+  local: {
+    file_checksum: string;
+    artist: string;
+    title: string;
+    version: string;
+    creator: string;
+    total_votes: number;
+  };
+  official: {
+    osu_beatmap_id: number;
+    beatmapset_id: number;
+    official_file_checksum: string | null;
+    artist: string;
+    title: string;
+    version: string;
+    creator: string;
+  };
+  existing_official: { id: number; total_votes: number } | null;
+  evidence: {
+    exact_checksum: boolean;
+    metadata_differences: string[];
+    requires_manual_confirmation: boolean;
+  };
 }
 
 const COLORS = {
@@ -49,6 +86,10 @@ export default function BeatmapDetailPage() {
   const [deletingVoteId, setDeletingVoteId] = useState<number | null>(null);
   const [deletingBeatmap, setDeletingBeatmap] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [officialId, setOfficialId] = useState("");
+  const [promotionPreview, setPromotionPreview] = useState<PromotionPreview | null>(null);
+  const [previewingPromotion, setPreviewingPromotion] = useState(false);
+  const [promoting, setPromoting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -102,6 +143,50 @@ export default function BeatmapDetailPage() {
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : String(reason));
       setDeletingBeatmap(false);
+    }
+  }
+
+  async function previewPromotion() {
+    setPreviewingPromotion(true);
+    setPromotionPreview(null);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/admin/beatmaps/${beatmapId}/promote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ osu_beatmap_id: officialId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to verify official beatmap");
+      setPromotionPreview(result);
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setPreviewingPromotion(false);
+    }
+  }
+
+  async function confirmPromotion() {
+    if (!promotionPreview) return;
+    const message = promotionPreview.existing_official
+      ? `Merge this local revision into the existing official record? The newest vote from each user will be kept.`
+      : `Promote this local revision to official beatmap #${promotionPreview.official.osu_beatmap_id}?`;
+    if (!window.confirm(`${message}\n\nThis operation is audited and cannot be automatically undone.`)) return;
+
+    setPromoting(true);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/admin/beatmaps/${beatmapId}/promote`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ osu_beatmap_id: promotionPreview.official.osu_beatmap_id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to promote beatmap");
+      window.location.href = `/admin/beatmaps/${result.target_beatmap_id}`;
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : String(reason));
+      setPromoting(false);
     }
   }
 
@@ -193,6 +278,109 @@ export default function BeatmapDetailPage() {
       {actionError && (
         <div className="mb-6 rounded-lg border border-red-800 bg-red-900/30 p-4 text-sm text-red-300">
           {actionError}
+        </div>
+      )}
+
+      {beatmap.source_type === "local" && (
+        <div className="mb-8 rounded-xl border border-gray-800 bg-gray-900 p-6">
+          <h2 className="text-xl font-semibold">Promote to Official</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Enter the official difficulty ID. osu! metadata is verified server-side; names are evidence only and may legitimately differ.
+          </p>
+          <div className="mt-4 flex gap-3">
+            <input
+              value={officialId}
+              onChange={(event) => {
+                setOfficialId(event.target.value.replace(/\D/g, ""));
+                setPromotionPreview(null);
+              }}
+              placeholder="Official beatmap ID"
+              inputMode="numeric"
+              className="w-64 rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm outline-none focus:border-pink-500"
+            />
+            <button
+              onClick={previewPromotion}
+              disabled={!officialId || previewingPromotion}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+            >
+              {previewingPromotion ? "Verifying..." : "Compare records"}
+            </button>
+          </div>
+
+          {promotionPreview && (
+            <div className="mt-6 space-y-4">
+              <div className={`rounded-lg border p-4 text-sm ${promotionPreview.evidence.exact_checksum ? "border-green-800 bg-green-900/20" : "border-yellow-800 bg-yellow-900/20"}`}>
+                <div className="font-medium">
+                  {promotionPreview.evidence.exact_checksum
+                    ? "Exact file checksum match"
+                    : "Checksum does not match; manual identity confirmation required"}
+                </div>
+                {!promotionPreview.official.official_file_checksum && (
+                  <div className="mt-1 text-yellow-300">osu! did not provide a checksum for this difficulty.</div>
+                )}
+                {promotionPreview.evidence.metadata_differences.length > 0 && (
+                  <div className="mt-1 text-yellow-300">
+                    Different metadata: {promotionPreview.evidence.metadata_differences.join(", ")}. Renaming is allowed, but verify the gameplay identity yourself.
+                  </div>
+                )}
+                {promotionPreview.existing_official && (
+                  <div className="mt-1 text-blue-300">
+                    An official record already exists with {promotionPreview.existing_official.total_votes} vote(s). Votes will be merged, keeping each user&apos;s newest vote.
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  { label: "Local record", value: promotionPreview.local },
+                  { label: `Official #${promotionPreview.official.osu_beatmap_id}`, value: promotionPreview.official },
+                ].map((record) => (
+                  <div key={record.label} className="rounded-lg border border-gray-800 bg-gray-950 p-4 text-sm">
+                    <h3 className="mb-3 font-semibold text-pink-400">{record.label}</h3>
+                    <div>{record.value.artist} - {record.value.title}</div>
+                    <div className="text-gray-400">[{record.value.version}] mapped by {record.value.creator}</div>
+                    <div className="mt-2 break-all font-mono text-xs text-gray-500">
+                      {"file_checksum" in record.value
+                        ? record.value.file_checksum
+                        : record.value.official_file_checksum || "No official checksum returned"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={confirmPromotion}
+                disabled={promoting}
+                className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold hover:bg-pink-500 disabled:opacity-50"
+              >
+                {promoting ? "Promoting..." : "Confirm identity and promote"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {data.promotion_history?.length > 0 && (
+        <div className="mb-8 rounded-xl border border-gray-800 bg-gray-900 p-6">
+          <h2 className="text-xl font-semibold">Promotion History</h2>
+          <div className="mt-4 space-y-3">
+            {data.promotion_history.map((entry) => (
+              <div key={entry.id} className="rounded-lg border border-gray-800 bg-gray-950 p-4 text-sm">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="font-medium text-pink-400">
+                    {entry.match_method === "exact_checksum" ? "Exact checksum" : "Admin confirmed"}
+                  </span>
+                  <span className="text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
+                  <span>{entry.moved_votes} local vote(s) processed</span>
+                  <span>{entry.duplicate_votes} duplicate(s) resolved</span>
+                </div>
+                <div className="mt-2 break-all font-mono text-xs text-gray-500">
+                  Local MD5: {entry.local_file_checksum}
+                  {entry.official_file_checksum && ` | Official MD5: ${entry.official_file_checksum}`}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

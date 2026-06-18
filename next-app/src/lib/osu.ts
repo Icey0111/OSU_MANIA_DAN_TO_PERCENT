@@ -20,6 +20,7 @@ export interface OsuBeatmapMetadata {
   title: string;
   version: string;
   creator: string;
+  official_file_checksum: string | null;
 }
 
 export class OsuApiError extends Error {
@@ -253,6 +254,7 @@ async function requestOsuBeatmap(
     mode?: unknown;
     mode_int?: unknown;
     version?: unknown;
+    checksum?: unknown;
     beatmapset?: {
       artist?: unknown;
       title?: unknown;
@@ -283,6 +285,10 @@ async function requestOsuBeatmap(
     title: set.title,
     version: data.version,
     creator: set.creator,
+    official_file_checksum:
+      typeof data.checksum === "string" && /^[0-9a-f]{32}$/i.test(data.checksum)
+        ? data.checksum.toLowerCase()
+        : null,
   };
   cacheBeatmap(metadata);
   return metadata;

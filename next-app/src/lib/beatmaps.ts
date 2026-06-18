@@ -8,6 +8,7 @@ export interface BeatmapRecord {
   source_type: "osu" | "local";
   file_checksum: string | null;
   checksum_algorithm: string | null;
+  official_file_checksum?: string | null;
   mode: number;
   artist: string;
   title: string;
@@ -147,5 +148,4 @@ export async function buildVoteResults(
 }
 
 export const BEATMAP_SELECT =
-  "id, osu_beatmap_id, beatmapset_id, source_type, file_checksum, checksum_algorithm, mode, artist, title, version, creator, total_votes";
-
+  "id, osu_beatmap_id, beatmapset_id, source_type, file_checksum, checksum_algorithm, official_file_checksum, mode, artist, title, version, creator, total_votes";

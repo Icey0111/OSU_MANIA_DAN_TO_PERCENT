@@ -28,7 +28,14 @@ export async function GET(
   if (!data) return NextResponse.json({ error: "Beatmap not found" }, { status: 404 });
 
   try {
-    return NextResponse.json(await buildVoteResults(db, data as BeatmapRecord));
+    const results = await buildVoteResults(db, data as BeatmapRecord);
+    const { data: promotionHistory, error: historyError } = await db
+      .from("beatmap_promotion_audits")
+      .select("id, local_beatmap_id, official_beatmap_id, local_file_checksum, official_file_checksum, match_method, moved_votes, duplicate_votes, created_at")
+      .eq("target_beatmap_id", internalId)
+      .order("created_at", { ascending: false });
+    if (historyError) throw historyError;
+    return NextResponse.json({ ...results, promotion_history: promotionHistory || [] });
   } catch (error) {
     console.error("Admin beatmap results query failed:", error);
     return NextResponse.json({ error: "Failed to load beatmap" }, { status: 500 });
