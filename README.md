@@ -1,71 +1,126 @@
 # osu!mania Dan Voting
 
-osu!mania 谱面段位投票覆盖层。在游戏内对当前谱面进行难度评定，使用 DDMythical Reform Dan 4K 体系。
+osu!mania Dan Voting 是一个基于 tosu 的游戏内段位投票覆盖层。它会自动读取当前 osu!mania 谱面，让已登录的玩家按照 DDMythical Reform Dan 4K 体系提交难度评价，并实时显示社区投票分布。
 
-## 下载安装
+## 功能
 
-1. 下载 [release.zip](https://github.com/Icey0111/OSU_MANIA_DAN_TO_PERCENT/releases/latest) 并解压
-2. 确保 [tosu](https://github.com/tosuapp/tosu) 正在运行
-3. 双击 `install.bat`，按提示输入 tosu 安装目录
-4. 在 OBS 中添加浏览器源：`http://localhost:24050/dan-voting/`
+- 自动识别当前 osu!mania 谱面
+- 使用 osu! 官方账号安全登录
+- 支持每位玩家对每个谱面提交或修改一次投票
+- 实时显示各段位的 low / mid / high 分布
+- 服务端通过 osu! 官方 API 校验谱面信息
+- 提供管理员统计页面和 CSV 导出
 
-详细说明见 zip 内的 `README.txt`。
+## 系统要求
 
-## 使用方法
+- Windows 10 或 Windows 11
+- [osu!](https://osu.ppy.sh/)
+- [tosu](https://github.com/tosuapp/tosu)
+- 可正常访问 osu! 登录页面和项目在线服务的网络环境
 
-1. 在 osu! 中进入任意 **mania** 谱面
-2. 覆盖层自动检测当前谱面并显示投票界面
-3. 点击 **Login with osu!** 登录 osu! 账号
-4. 选择段位和等级后点击 **Submit** 提交投票
+## 下载与安装
 
-## 项目架构
+1. 从 [Releases](https://github.com/Icey0111/OSU_MANIA_DAN_TO_PERCENT/releases/latest) 下载 `Release.zip`。
+2. 将压缩包完整解压到一个普通文件夹。
+3. 启动 tosu。
+4. 双击 `install.bat`。
+5. 如果安装程序没有自动找到 tosu，请输入包含 `tosu.exe` 的目录。
+6. 安装完成后，访问 `http://localhost:24050/dan-voting/` 检查页面。
 
-```
-               浏览器 / OBS                      游戏内覆盖层 (tosu)
-               ─────────────                     ──────────────────
-                     │                                   │
-                     ▼                                   ▼
-            ┌─────────────────────────────────────────────────┐
-            │           Next.js App (Vercel)                  │
-            │  /admin (管理后台)    /api (投票/认证接口)        │
-            └────────────────────┬────────────────────────────┘
-                                 │
-                                 ▼
-            ┌─────────────────────────────────────────────────┐
-            │              Supabase (PostgreSQL)              │
-            └─────────────────────────────────────────────────┘
+需要在 OBS 中显示时，添加一个浏览器源并使用同一地址：
+
+```text
+http://localhost:24050/dan-voting/
 ```
 
-- **覆盖层**: 在 osu! 游戏内显示，玩家选择段位和等级进行投票
-- **管理后台**: osu! OAuth 登录，查看谱面列表、投票统计、导出 CSV
-- **API**: JWT 鉴权的投票提交、谱面查询、用户认证
+## 登录与使用
+
+1. 在浏览器中打开 `http://localhost:24050/dan-voting/`。
+2. 点击 **Login with osu!**，完成 osu! 授权。
+3. 保持 tosu 和 osu! 运行，并在 osu! 中选择一个 mania 谱面。
+4. 覆盖层会自动显示谱面和已有投票结果。
+5. 选择段位以及 **low**、**mid** 或 **high**。
+6. 点击 **Submit Vote** 提交。
+
+浏览器页面和游戏内渲染窗口使用独立的存储空间。登录后，系统会通过一次性安装标识将登录状态安全同步到本机的游戏内覆盖层；同步可能需要几秒钟。
 
 ## 段位体系
 
-| 数字段位 | 字母段位 |
-|---------|---------|
-| 1 ~ 10 | α, β, γ, δ, ε, ζ, η |
+| 类型 | 可选段位 |
+|---|---|
+| 数字段位 | 1 至 10 |
+| 希腊字母段位 | α、β、γ、δ、ε、ζ、η |
 
-每个段位分为三个等级：**low** / **mid** / **high**
+每个段位进一步分为 **low**、**mid** 和 **high** 三档。
 
-## 管理后台
+## 常见问题
 
-管理员可通过 Web 后台查看谱面列表、投票统计、导出 CSV：
+### 页面无法打开
 
-https://osu-mania-dan-voting.top/admin
+确认 tosu 正在运行，并检查地址是否为 `http://localhost:24050/dan-voting/`。地址中不需要加入 `static`。
 
-（需 osu! 账号登录，管理员权限由后台分配）
+### 游戏内仍然显示未登录
+
+请在普通浏览器中打开上述本地地址并登录，然后等待几秒。如果仍未同步，按 `F5` 刷新浏览器页面和覆盖层。
+
+### 没有显示当前谱面
+
+确认当前谱面属于 osu!mania 模式，并检查 tosu 是否能够读取游戏状态。
+
+### 投票提交失败
+
+检查网络连接和登录状态。系统只接受 osu! 官方 API 能够确认的 mania 谱面；临时无法连接 osu! API 时，请稍后重试。
+
+## 项目架构
+
+```text
+osu! 游戏
+   │
+   ▼
+tosu WebSocket ──► 本地覆盖层 ──► 投票与认证 API
+                                      │
+                      ┌───────────────┴───────────────┐
+                      ▼                               ▼
+               osu! OAuth / API              PostgreSQL 数据库
+               登录和谱面校验                用户、谱面和投票
+```
+
+- **本地覆盖层**：通过 tosu WebSocket 获取当前谱面，显示投票界面和结果。
+- **Web 应用与 API**：处理 osu! 登录、权限验证、谱面校验、投票和统计。
+- **数据库**：持久保存用户、经过校验的谱面信息、投票和短期登录同步记录。
+- **管理后台**：供授权管理员查看统计、浏览谱面和导出 CSV。
+
+服务端只信任客户端提交的谱面 ID 和投票选择。艺术家、标题、难度名和谱师等元数据会通过 osu! 官方 API 获取后再保存。
+
+## 项目结构
+
+```text
+overlay/dan-voting/   tosu 覆盖层源文件
+next-app/             Web 页面、API、认证和管理后台
+next-app/src/lib/     数据库、osu! API、JWT、CORS 与输入验证
+scripts/              覆盖层同步工具
+supabase/migrations/  数据库迁移记录
+release/              面向普通用户的安装文件
+schema.sql            数据库结构
+```
 
 ## 技术栈
 
 | 技术 | 用途 |
-|------|------|
-| Next.js 14 (App Router) | 全栈框架 |
-| React 18 | UI 组件 |
-| TypeScript | 类型安全 |
-| Tailwind CSS | 样式 |
-| Supabase (PostgreSQL) | 数据库 |
-| jose | JWT 签名/验证 |
-| Recharts | 投票分布图表 |
-| tosu WebSocket | 获取游戏内当前谱面 |
-| osu! OAuth v2 + PKCE | 用户认证 |
+|---|---|
+| Next.js 14 / React 18 | Web 页面、API 和管理后台 |
+| TypeScript | 服务端和管理界面的类型安全 |
+| 原生 HTML / CSS / JavaScript | 轻量级 tosu 覆盖层 |
+| tosu WebSocket | 获取 osu! 当前谱面状态 |
+| osu! OAuth v2 + PKCE | 玩家身份认证 |
+| osu! API v2 | 服务端谱面元数据和模式校验 |
+| Supabase PostgreSQL | 用户、谱面、投票和登录同步数据 |
+| jose | JWT 签名与验证 |
+| Tailwind CSS / Recharts | 管理后台样式与统计图表 |
+
+## 在线入口
+
+- 项目主页：<https://osu-mania-dan-voting.top>
+- 管理后台：<https://osu-mania-dan-voting.top/admin>
+
+管理后台需要 osu! 登录和管理员权限。
