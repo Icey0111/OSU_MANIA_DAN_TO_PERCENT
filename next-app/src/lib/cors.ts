@@ -3,6 +3,8 @@
 const ALLOWED_ORIGINS = [
   "http://127.0.0.1:24050",
   "http://localhost:24050",
+  "tosu://server",
+  "null",
 ];
 
 function resolveOrigin(request?: Request): string {

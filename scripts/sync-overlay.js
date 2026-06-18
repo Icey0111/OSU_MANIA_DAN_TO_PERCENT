@@ -13,6 +13,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 // ===== 配置 =====
 const OVERLAY_NAME = "dan-voting";
@@ -21,10 +22,12 @@ const SOURCE_DIR = path.resolve(__dirname, "..", "overlay", OVERLAY_NAME);
 // ===== 解析参数 =====
 const args = process.argv.slice(2);
 const tosuArg = args.find((a) => a.startsWith("--tosu="));
+const tosuArgIndex = args.indexOf("--tosu");
 const watchMode = args.includes("--watch") || args.includes("-w");
 
 let tosuPath =
   tosuArg?.split("=")[1] ||
+  (tosuArgIndex >= 0 ? args[tosuArgIndex + 1] : null) ||
   process.env.TOSU_PATH ||
   path.resolve(__dirname, "..", "tosu");
 
@@ -43,13 +46,32 @@ function sync() {
   // 创建目标目录
   fs.mkdirSync(destDir, { recursive: true });
 
+  // Browser and in-game WebView have isolated storage. This installation ID
+  // lets the API hand a fresh login to this specific local renderer.
+  const installationIdPath = path.join(destDir, ".installation-id");
+  let installationId = "";
+  if (fs.existsSync(installationIdPath)) {
+    installationId = fs.readFileSync(installationIdPath, "utf8").trim();
+  }
+  if (!/^[a-f0-9]{64}$/.test(installationId)) {
+    installationId = crypto.randomBytes(32).toString("hex");
+    fs.writeFileSync(installationIdPath, installationId, "utf8");
+  }
+
   // 复制所有文件
   const files = fs.readdirSync(SOURCE_DIR);
   for (const file of files) {
     const src = path.join(SOURCE_DIR, file);
     const dest = path.join(destDir, file);
     if (fs.statSync(src).isFile()) {
-      fs.copyFileSync(src, dest);
+      if (file === "index.html") {
+        const html = fs
+          .readFileSync(src, "utf8")
+          .replace("__DAN_VOTING_INSTALLATION_ID__", installationId);
+        fs.writeFileSync(dest, html, "utf8");
+      } else {
+        fs.copyFileSync(src, dest);
+      }
       console.log(`[OK] ${file} → ${destDir}`);
     }
   }
