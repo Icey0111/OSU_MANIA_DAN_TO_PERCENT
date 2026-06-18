@@ -22,6 +22,7 @@ interface BeatmapData {
 }
 
 interface Voter {
+  vote_id: number;
   user_id: number;
   osu_id: number;
   osu_username: string;
@@ -45,6 +46,9 @@ export default function BeatmapDetailPage() {
   const [loading, setLoading] = useState(true);
   const [voters, setVoters] = useState<Voter[]>([]);
   const [votersLoading, setVotersLoading] = useState(true);
+  const [deletingVoteId, setDeletingVoteId] = useState<number | null>(null);
+  const [deletingBeatmap, setDeletingBeatmap] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -61,6 +65,45 @@ export default function BeatmapDetailPage() {
     }
     load();
   }, [beatmapId]);
+
+  async function deleteVote(voter: Voter) {
+    if (!window.confirm(`Remove ${voter.osu_username}'s vote from this local beatmap?`)) return;
+    setDeletingVoteId(voter.vote_id);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/admin/beatmaps/${beatmapId}/votes/${voter.vote_id}`,
+        { method: "DELETE" }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to remove vote");
+      window.location.reload();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : String(reason));
+      setDeletingVoteId(null);
+    }
+  }
+
+  async function deleteLocalBeatmap() {
+    if (!data?.beatmap || data.beatmap.source_type !== "local") return;
+    const confirmed = window.confirm(
+      `Delete this local beatmap revision and all ${data.beatmap.total_votes} vote(s)?\n\nThis cannot be undone.`
+    );
+    if (!confirmed) return;
+    setDeletingBeatmap(true);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/admin/beatmaps/${beatmapId}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to delete beatmap");
+      window.location.href = "/admin/local-beatmaps";
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : String(reason));
+      setDeletingBeatmap(false);
+    }
+  }
 
   useEffect(() => {
     async function loadVoters() {
@@ -135,8 +178,23 @@ export default function BeatmapDetailPage() {
           ) : (
             <span className="text-yellow-400 text-sm">Local / Unsubmitted</span>
           )}
+          {beatmap.source_type === "local" && (
+            <button
+              onClick={deleteLocalBeatmap}
+              disabled={deletingBeatmap}
+              className="rounded-lg border border-red-800 px-3 py-1 text-sm text-red-400 hover:bg-red-900/30 disabled:opacity-50"
+            >
+              {deletingBeatmap ? "Deleting..." : "Delete local revision"}
+            </button>
+          )}
         </div>
       </div>
+
+      {actionError && (
+        <div className="mb-6 rounded-lg border border-red-800 bg-red-900/30 p-4 text-sm text-red-300">
+          {actionError}
+        </div>
+      )}
 
       {/* Vote Distribution Chart */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
@@ -228,18 +286,21 @@ export default function BeatmapDetailPage() {
               <th className="p-4 text-sm text-gray-400">Dan Level</th>
               <th className="p-4 text-sm text-gray-400">Tier</th>
               <th className="p-4 text-sm text-gray-400">Voted At</th>
+              {beatmap.source_type === "local" && (
+                <th className="p-4 text-sm text-gray-400 text-right">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {votersLoading ? (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-gray-500">
+                <td colSpan={beatmap.source_type === "local" ? 5 : 4} className="p-8 text-center text-gray-500">
                   Loading voters...
                 </td>
               </tr>
             ) : voters.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-gray-500">
+                <td colSpan={beatmap.source_type === "local" ? 5 : 4} className="p-8 text-center text-gray-500">
                   No votes recorded for this beatmap.
                 </td>
               </tr>
@@ -283,6 +344,17 @@ export default function BeatmapDetailPage() {
                   <td className="p-4 text-gray-500 text-sm">
                     {new Date(v.voted_at).toLocaleString()}
                   </td>
+                  {beatmap.source_type === "local" && (
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => deleteVote(v)}
+                        disabled={deletingVoteId === v.vote_id}
+                        className="text-sm text-red-400 hover:text-red-300 disabled:opacity-50"
+                      >
+                        {deletingVoteId === v.vote_id ? "Removing..." : "Remove vote"}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

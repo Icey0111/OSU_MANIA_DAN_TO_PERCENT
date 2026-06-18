@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
   const search = searchParams.get("search") || "";
+  const source = searchParams.get("source") || "all";
   const sort = searchParams.get("sort") || "total_votes";
   const order = searchParams.get("order") || "desc";
   const offset = (page - 1) * limit;
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
   const db = getSupabaseAdmin();
 
   let query = db.from("beatmaps").select("*", { count: "exact" });
+
+  if (source === "osu" || source === "local") {
+    query = query.eq("source_type", source);
+  }
 
   // Search filter
   if (search) {

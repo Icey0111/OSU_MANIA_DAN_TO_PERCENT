@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/db";
 import { DAN_ORDER, DAN_LABELS } from "@/lib/validation";
 
 interface VoterRow {
+  id: number;
   user_id: number;
   dan_level: string;
   tier: string;
@@ -52,6 +53,7 @@ export async function GET(
   const { data: votes, error: votesError } = await db
     .from("votes")
     .select(`
+      id,
       user_id,
       dan_level,
       tier,
@@ -82,6 +84,7 @@ export async function GET(
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     })
     .map((v) => ({
+      vote_id: v.id,
       user_id: v.user_id,
       osu_id: v.users.osu_id,
       osu_username: v.users.osu_username,
