@@ -7,3 +7,4 @@ env.txt
 *.log
 .vercel
 .qoder/
+release.zip
