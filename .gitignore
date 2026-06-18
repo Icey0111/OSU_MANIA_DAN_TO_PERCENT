@@ -2,5 +2,9 @@ node_modules/
 .next/
 .env.local
 .env
+.env*.local
+env.txt
 *.log
 .vercel
+.qoder/
+release.zip

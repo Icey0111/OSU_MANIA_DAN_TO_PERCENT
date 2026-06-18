@@ -4,6 +4,9 @@ import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
 import { isValidDanLevel, isValidTier, DAN_ORDER } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(request: NextRequest) {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
@@ -115,13 +118,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Delete existing vote for this user+beatmap, then insert new one
-  // (DELETE + INSERT is more reliable than upsert with composite onConflict)
-  await db
+  // 2. Delete any existing vote for this user+beatmap, then insert the new one.
+  //    DELETE + INSERT is more reliable than upsert with composite onConflict keys,
+  //    which can silently create duplicate rows in Supabase.
+  const { error: deleteError } = await db
     .from("votes")
     .delete()
     .eq("user_id", payload.sub)
     .eq("beatmap_id", beatmap.id);
+
+  if (deleteError) {
+    console.error("Vote delete error:", deleteError);
+    return applyCorsHeaders(
+      NextResponse.json({ error: "Failed to update vote" }, { status: 500 }),
+      request
+    );
+  }
 
   const { error: voteError } = await db
     .from("votes")
@@ -144,7 +156,8 @@ export async function POST(request: NextRequest) {
   const { data: allVotes } = await db
     .from("votes")
     .select("dan_level, tier, user_id")
-    .eq("beatmap_id", beatmap.id);
+    .eq("beatmap_id", beatmap.id)
+    .order("created_at", { ascending: true });
 
   // Deduplicate: keep only the last vote per user (handles legacy duplicate rows)
   const dedupedVotes: Record<string, { dan_level: string; tier: string }> = {};
