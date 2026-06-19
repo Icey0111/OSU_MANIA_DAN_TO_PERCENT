@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DAN_ORDER } from "@/lib/validation";
+import {
+  analyzeConfidence,
+  buildDistribution,
+  buildInGameDistribution,
+} from "@/lib/confidence";
 
 export interface BeatmapRecord {
   id: number;
@@ -118,13 +123,7 @@ export async function buildVoteResults(
     };
   }
 
-  const distribution: Record<string, { low: number; mid: number; high: number }> = {};
-  for (const vote of Object.values(dedupedVotes)) {
-    if (!distribution[vote.dan_level]) {
-      distribution[vote.dan_level] = { low: 0, mid: 0, high: 0 };
-    }
-    distribution[vote.dan_level][vote.tier as "low" | "mid" | "high"]++;
-  }
+  const distribution = buildDistribution(Object.values(dedupedVotes));
 
   const sortedDistribution: typeof distribution = {};
   for (const key of Object.keys(distribution).sort(
@@ -137,10 +136,13 @@ export async function buildVoteResults(
 
   const totalVotes = Object.keys(dedupedVotes).length;
   const ownVote = userId === undefined ? undefined : dedupedVotes[String(userId)];
+  const confidence = analyzeConfidence(sortedDistribution);
 
   return {
     beatmap: serializeBeatmap(beatmap, totalVotes),
     distribution: sortedDistribution,
+    render_distribution: buildInGameDistribution(sortedDistribution, confidence),
+    confidence,
     user_vote: ownVote
       ? { dan_level: ownVote.dan_level, tier: ownVote.tier }
       : null,

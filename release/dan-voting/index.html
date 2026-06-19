@@ -122,6 +122,21 @@ body {
   color: #ff66aa;
   font-weight: 600;
 }
+.dan-btn.low-confidence { border-color: rgba(234,179,8,0.65); }
+.dan-btn:disabled,
+.dan-btn.rejected {
+  cursor: not-allowed;
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+.confidence-notice {
+  margin: 5px 0 8px;
+  padding: 5px 7px;
+  border: 1px solid rgba(234,179,8,0.35);
+  border-radius: 4px;
+  color: #eab308;
+  font-size: 10px;
+}
 
 /* Tier Selector */
 .tier-group { display: flex; gap: 3px; margin-bottom: 8px; }
@@ -168,6 +183,16 @@ body {
   align-items: center;
 }
 .result-dan-total { font-size: 9px; color: #888; font-weight: 400; }
+.confidence-badge {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 500;
+}
+.confidence-badge.baseline { background: rgba(34,197,94,0.18); color: #4ade80; }
+.confidence-badge.low { background: rgba(234,179,8,0.18); color: #facc15; }
+.confidence-badge.rejected { background: rgba(239,68,68,0.18); color: #f87171; }
 .result-bar-group { display: flex; flex-direction: column; gap: 1px; }
 .result-bar-row {
   display: flex;
@@ -542,28 +567,44 @@ function render() {
   if (s.beatmap && s.user && !IS_INGAME_RENDERER) {
     html += `<div class="section-title">Your Vote</div>`;
 
+    const danButton = (dl, label = dl) => {
+      const selected = s.selectedDan === dl ? ' selected' : '';
+      const confidence = s.voteData?.confidence?.ranks?.[dl];
+      const confidenceClass = confidence === 'rejected'
+        ? ' rejected'
+        : confidence === 'low' ? ' low-confidence' : '';
+      const disabled = confidence === 'rejected'
+        ? ' disabled title="Outside the accepted confidence range"'
+        : '';
+      return `<button class="dan-btn${selected}${confidenceClass}"${disabled} onclick="selectDan('${dl}')">${label}</button>`;
+    };
+
     // Dan grid - row 1: 1-7
     html += `<div class="dan-grid">`;
     DAN_LEVELS.slice(0, 7).forEach(dl => {
-      const sel = s.selectedDan === dl ? ' selected' : '';
-      html += `<button class="dan-btn${sel}" onclick="selectDan('${dl}')">${dl}</button>`;
+      html += danButton(dl);
     });
     html += `</div>`;
     // Dan grid - row 2: 8-10 + α-γ
     html += `<div class="dan-grid">`;
     DAN_LEVELS.slice(7, 13).forEach(dl => {
-      const sel = s.selectedDan === dl ? ' selected' : '';
-      html += `<button class="dan-btn${sel}" onclick="selectDan('${dl}')">${dl}</button>`;
+      html += danButton(dl);
     });
     html += `</div>`;
     // Dan grid - row 3: δ-η
     html += `<div class="dan-grid">`;
     DAN_LEVELS.slice(13).forEach(dl => {
-      const sel = s.selectedDan === dl ? ' selected' : '';
       const label = dl === 'ζ' ? 'ζ(E)' : dl === 'η' ? 'η(Th)' : dl;
-      html += `<button class="dan-btn${sel}" onclick="selectDan('${dl}')">${label}</button>`;
+      html += danButton(dl, label);
     });
     html += `</div>`;
+
+    const selectedConfidence = s.voteData?.confidence?.ranks?.[s.selectedDan];
+    if (selectedConfidence === 'low') {
+      html += `<div class="confidence-notice">Confidence low - use with caution. This vote is one full rank from the community baseline.</div>`;
+    } else if (s.voteData?.confidence?.active) {
+      html += `<div class="confidence-notice">Community baseline: ${esc(s.voteData.confidence.baseline_rank)}. Ranks more than one full step away are disabled.</div>`;
+    }
 
     // Tier selector
     html += `<div class="tier-group">`;
@@ -573,7 +614,9 @@ function render() {
     });
     html += `</div>`;
 
-    const canSubmit = s.selectedDan && s.selectedTier && s.appState !== 'VOTE_SUBMITTING';
+    const canSubmit = s.selectedDan && s.selectedTier &&
+      s.voteData?.confidence?.ranks?.[s.selectedDan] !== 'rejected' &&
+      s.appState !== 'VOTE_SUBMITTING';
     const submitText = s.appState === 'VOTE_SUBMITTING'
       ? '<span class="spinner"></span> Submitting...'
       : 'Submit Vote';
@@ -584,8 +627,12 @@ function render() {
 
   // Results section
   if (s.voteData && s.voteData.distribution && Object.keys(s.voteData.distribution).length > 0) {
-    const dist = s.voteData.distribution;
-    const total = s.voteData.beatmap?.total_votes || 0;
+    const dist = IS_INGAME_RENDERER
+      ? (s.voteData.render_distribution || s.voteData.distribution)
+      : s.voteData.distribution;
+    const total = IS_INGAME_RENDERER
+      ? Object.values(dist).reduce((sum, tiers) => sum + tiers.low + tiers.mid + tiers.high, 0)
+      : (s.voteData.beatmap?.total_votes || 0);
     const resultCount = Object.keys(dist).length;
     const titleClass = IS_INGAME_RENDERER ? 'section-title ingame-results-title' : 'section-title';
     const resultsClass = IS_INGAME_RENDERER
@@ -598,6 +645,14 @@ function render() {
       const danTotal = tiers.low + tiers.mid + tiers.high;
       const label = DAN_LABELS[dan] || dan;
       const isUserVote = s.voteData.user_vote && s.voteData.user_vote.dan_level === dan;
+      const rankConfidence = s.voteData.confidence?.ranks?.[dan];
+      const confidenceBadge = !IS_INGAME_RENDERER && s.voteData.confidence?.active
+        ? rankConfidence === 'baseline'
+          ? `<span class="confidence-badge baseline">baseline</span>`
+          : rankConfidence === 'low'
+            ? `<span class="confidence-badge low">confidence low - use with caution</span>`
+            : `<span class="confidence-badge rejected">excluded from confidence tally</span>`
+        : '';
 
       const danName = isUserVote ? `★ ${label}` : label;
       if (IS_INGAME_RENDERER) {
@@ -610,7 +665,7 @@ function render() {
           <div class="result-bar-group ingame-result-bars">`;
       } else {
         html += `<div class="result-row">
-          <div class="result-dan"><span>${danName}</span><span class="result-dan-total">${danTotal} vote${danTotal !== 1 ? 's' : ''}</span></div>
+          <div class="result-dan"><span>${danName}${confidenceBadge}</span><span class="result-dan-total">${danTotal} vote${danTotal !== 1 ? 's' : ''}</span></div>
           <div class="result-bar-group">`;
       }
 
@@ -825,6 +880,8 @@ async function fetchVoteData(beatmap, keepSelection = false, caller = 'unknown')
       if (!state.voteData) state.voteData = {};
       state.voteData.beatmap = data.beatmap;
       state.voteData.distribution = data.distribution;
+      state.voteData.render_distribution = data.render_distribution;
+      state.voteData.confidence = data.confidence;
       // keep existing user_vote, selectedDan, selectedTier unchanged
     }
   } else {
@@ -876,6 +933,12 @@ async function fetchUserInfo() {
 
 async function submitVote() {
   if (!state.selectedDan || !state.selectedTier || !state.beatmap) return;
+
+  if (state.voteData?.confidence?.ranks?.[state.selectedDan] === 'rejected') {
+    state.lastError = `Vote rejected: ${state.selectedDan} is more than one full rank from the community baseline.`;
+    render();
+    return;
+  }
 
   const chosenDan = state.selectedDan;
   const chosenTier = state.selectedTier;
@@ -1013,6 +1076,12 @@ function logout() {
 }
 
 function selectDan(dan) {
+  if (state.voteData?.confidence?.ranks?.[dan] === 'rejected') {
+    state.lastError = `Vote rejected: ${dan} is more than one full rank from the community baseline.`;
+    render();
+    return;
+  }
+  state.lastError = null;
   console.log(`[selectDan] click: ${state.selectedDan} -> ${state.selectedDan === dan ? 'null (toggle off)' : dan}`);
   state.selectedDan = state.selectedDan === dan ? null : dan;
   render();

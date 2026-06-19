@@ -126,3 +126,6 @@ CREATE TRIGGER trigger_update_total_votes
     AFTER INSERT OR DELETE ON votes
     FOR EACH ROW
     EXECUTE FUNCTION update_beatmap_total_votes();
+
+-- The database-level confidence guard is defined in
+-- supabase/migrations/20260619040000_vote_confidence_guard.sql.

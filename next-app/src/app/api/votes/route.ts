@@ -10,6 +10,7 @@ import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import { getSupabaseAdmin } from "@/lib/db";
 import { getOsuBeatmap, OsuApiError } from "@/lib/osu";
 import { isValidDanLevel, isValidTier } from "@/lib/validation";
+import { analyzeConfidence, buildDistribution } from "@/lib/confidence";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -223,27 +224,56 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { error: deleteError } = await db
+  // Exclude the caller's existing vote so changing a vote is evaluated
+  // against the rest of the community rather than against itself.
+  const { data: peerVotes, error: peerVotesError } = await db
     .from("votes")
-    .delete()
-    .eq("user_id", payload.sub)
-    .eq("beatmap_id", beatmap.id);
-  if (deleteError) {
-    console.error("Vote delete error:", deleteError);
+    .select("dan_level, tier")
+    .eq("beatmap_id", beatmap.id)
+    .neq("user_id", payload.sub);
+  if (peerVotesError) {
+    console.error("Confidence lookup failed:", peerVotesError);
     return applyCorsHeaders(
-      NextResponse.json({ error: "Failed to update vote" }, { status: 500 }),
+      NextResponse.json({ error: "Failed to evaluate vote confidence" }, { status: 500 }),
+      request
+    );
+  }
+  const confidence = analyzeConfidence(buildDistribution(peerVotes || []));
+  if (confidence.active && confidence.ranks[body.dan_level] === "rejected") {
+    return applyCorsHeaders(
+      NextResponse.json(
+        {
+          error: `Vote is more than one full rank from the community baseline (${confidence.baseline_rank})`,
+          code: "vote_outside_confidence_range",
+          confidence,
+        },
+        { status: 422 }
+      ),
       request
     );
   }
 
-  const { error: voteError } = await db.from("votes").insert({
-    user_id: payload.sub,
-    beatmap_id: beatmap.id,
-    dan_level: body.dan_level,
-    tier: body.tier,
-  });
+  const { error: voteError } = await db.from("votes").upsert(
+    {
+      user_id: payload.sub,
+      beatmap_id: beatmap.id,
+      dan_level: body.dan_level,
+      tier: body.tier,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,beatmap_id" }
+  );
   if (voteError) {
     console.error("Vote insert error:", voteError);
+    if (voteError.code === "23514" && voteError.message.includes("vote_outside_confidence_range")) {
+      return applyCorsHeaders(
+        NextResponse.json(
+          { error: "Vote is outside the accepted confidence range", code: "vote_outside_confidence_range" },
+          { status: 422 }
+        ),
+        request
+      );
+    }
     return applyCorsHeaders(
       NextResponse.json({ error: "Failed to save vote" }, { status: 500 }),
       request
