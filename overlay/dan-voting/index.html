@@ -191,6 +191,8 @@ body {
   font-weight: 500;
 }
 .confidence-badge.baseline { background: rgba(34,197,94,0.18); color: #4ade80; }
+.confidence-badge.provisional { background: rgba(59,130,246,0.18); color: #60a5fa; }
+.confidence-badge.tied { background: rgba(168,85,247,0.18); color: #c084fc; }
 .confidence-badge.low { background: rgba(234,179,8,0.18); color: #facc15; }
 .confidence-badge.rejected { background: rgba(239,68,68,0.18); color: #f87171; }
 .result-bar-group { display: flex; flex-direction: column; gap: 1px; }
@@ -604,6 +606,10 @@ function render() {
       html += `<div class="confidence-notice">Confidence low - use with caution. This vote is one full rank from the community baseline.</div>`;
     } else if (s.voteData?.confidence?.active) {
       html += `<div class="confidence-notice">Community baseline: ${esc(s.voteData.confidence.baseline_rank)}. Ranks more than one full step away are disabled.</div>`;
+    } else if (s.voteData?.confidence?.stage === 'provisional') {
+      html += `<div class="confidence-notice">Provisional baseline: ${esc(s.voteData.confidence.baseline_rank)}. All ranks remain open while confidence develops.</div>`;
+    } else if (s.voteData?.confidence?.stage === 'tied') {
+      html += `<div class="confidence-notice">Provisional tie: ${s.voteData.confidence.leading_ranks.map(esc).join(', ')}. All ranks remain open.</div>`;
     }
 
     // Tier selector
@@ -634,11 +640,15 @@ function render() {
       ? Object.values(dist).reduce((sum, tiers) => sum + tiers.low + tiers.mid + tiers.high, 0)
       : (s.voteData.beatmap?.total_votes || 0);
     const resultCount = Object.keys(dist).length;
+    const preliminary = !s.voteData.confidence?.active &&
+      ['provisional', 'tied'].includes(s.voteData.confidence?.stage)
+      ? ' (preliminary)'
+      : '';
     const titleClass = IS_INGAME_RENDERER ? 'section-title ingame-results-title' : 'section-title';
     const resultsClass = IS_INGAME_RENDERER
       ? `results-section ingame-results result-count-${resultCount}`
       : 'results-section';
-    html += `<div class="${titleClass}">Results (${total} vote${total !== 1 ? 's' : ''})</div>`;
+    html += `<div class="${titleClass}">Results (${total} vote${total !== 1 ? 's' : ''})${preliminary}</div>`;
     html += `<div class="${resultsClass}">`;
 
     for (const [dan, tiers] of Object.entries(dist)) {
@@ -646,12 +656,18 @@ function render() {
       const label = DAN_LABELS[dan] || dan;
       const isUserVote = s.voteData.user_vote && s.voteData.user_vote.dan_level === dan;
       const rankConfidence = s.voteData.confidence?.ranks?.[dan];
-      const confidenceBadge = !IS_INGAME_RENDERER && s.voteData.confidence?.active
-        ? rankConfidence === 'baseline'
-          ? `<span class="confidence-badge baseline">baseline</span>`
-          : rankConfidence === 'low'
-            ? `<span class="confidence-badge low">confidence low - use with caution</span>`
-            : `<span class="confidence-badge rejected">excluded from confidence tally</span>`
+      const confidenceBadge = !IS_INGAME_RENDERER
+        ? s.voteData.confidence?.active
+          ? rankConfidence === 'baseline'
+            ? `<span class="confidence-badge baseline">baseline</span>`
+            : rankConfidence === 'low'
+              ? `<span class="confidence-badge low">confidence low - use with caution</span>`
+              : `<span class="confidence-badge rejected">legacy outlier - not rendered in game</span>`
+          : rankConfidence === 'provisional'
+            ? `<span class="confidence-badge provisional">provisional baseline</span>`
+            : rankConfidence === 'tied'
+              ? `<span class="confidence-badge tied">tied provisional leader</span>`
+              : ''
         : '';
 
       const danName = isUserVote ? `★ ${label}` : label;

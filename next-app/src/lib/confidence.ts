@@ -2,7 +2,14 @@ import { DAN_LEVELS, DAN_ORDER, DanLevel } from "./validation";
 
 export type TierCounts = { low: number; mid: number; high: number };
 export type VoteDistribution = Record<string, TierCounts>;
-export type RankConfidence = "baseline" | "low" | "rejected" | "pending";
+export type ConfidenceStage = "empty" | "provisional" | "tied" | "established";
+export type RankConfidence =
+  | "baseline"
+  | "low"
+  | "rejected"
+  | "provisional"
+  | "tied"
+  | "pending";
 
 export const CONFIDENCE_POLICY = {
   minimum_total_votes: 20,
@@ -13,7 +20,9 @@ export const CONFIDENCE_POLICY = {
 
 export interface ConfidenceAnalysis {
   active: boolean;
+  stage: ConfidenceStage;
   baseline_rank: DanLevel | null;
+  leading_ranks: DanLevel[];
   baseline_votes: number;
   total_votes: number;
   leader_share: number;
@@ -60,11 +69,23 @@ export function analyzeConfidence(distribution: VoteDistribution): ConfidenceAna
     leader.count >= CONFIDENCE_POLICY.minimum_leader_votes &&
     leaderShare >= CONFIDENCE_POLICY.minimum_leader_share &&
     leadRatio >= CONFIDENCE_POLICY.minimum_leader_to_runner_up_ratio;
+  const leadingRanks = totalVotes > 0
+    ? ranked.filter((item) => item.count === leader.count).map((item) => item.rank)
+    : [];
+  const stage: ConfidenceStage = active
+    ? "established"
+    : totalVotes === 0
+      ? "empty"
+      : leadingRanks.length === 1 ? "provisional" : "tied";
 
   const ranks: Record<string, RankConfidence> = {};
   for (const rank of DAN_LEVELS) {
     if (!active) {
-      ranks[rank] = "pending";
+      ranks[rank] = stage === "provisional" && leadingRanks[0] === rank
+        ? "provisional"
+        : stage === "tied" && leadingRanks.includes(rank)
+          ? "tied"
+          : "pending";
       continue;
     }
     const distance = Math.abs(DAN_ORDER[rank] - DAN_ORDER[leader.rank]);
@@ -73,8 +94,10 @@ export function analyzeConfidence(distribution: VoteDistribution): ConfidenceAna
 
   return {
     active,
-    baseline_rank: active ? leader.rank : null,
-    baseline_votes: active ? leader.count : 0,
+    stage,
+    baseline_rank: leadingRanks.length === 1 ? leader.rank : null,
+    leading_ranks: leadingRanks,
+    baseline_votes: leadingRanks.length === 1 ? leader.count : 0,
     total_votes: totalVotes,
     leader_share: leaderShare,
     runner_up_votes: runnerUp,
@@ -87,7 +110,10 @@ export function buildInGameDistribution(
   distribution: VoteDistribution,
   confidence: ConfidenceAnalysis
 ): VoteDistribution {
-  if (!confidence.active || !confidence.baseline_rank) return distribution;
-  const baseline = distribution[confidence.baseline_rank];
-  return baseline ? { [confidence.baseline_rank]: baseline } : {};
+  if (confidence.stage === "empty") return {};
+  const rendered: VoteDistribution = {};
+  for (const rank of confidence.leading_ranks) {
+    if (distribution[rank]) rendered[rank] = distribution[rank];
+  }
+  return rendered;
 }
