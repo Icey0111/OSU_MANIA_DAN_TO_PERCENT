@@ -9,12 +9,13 @@ export const revalidate = 0;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { beatmapId: string } }
+  { params }: { params: Promise<{ beatmapId: string }> }
 ) {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
 
-  const beatmapId = Number(params.beatmapId);
+  const { beatmapId: rawBeatmapId } = await params;
+  const beatmapId = Number(rawBeatmapId);
   if (!Number.isSafeInteger(beatmapId) || beatmapId <= 0) {
     return applyCorsHeaders(
       NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 }),

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS beatmaps (
     title VARCHAR(256) NOT NULL,
     version VARCHAR(256) NOT NULL,
     creator VARCHAR(64) NOT NULL,
-    total_votes INTEGER DEFAULT 0,
+    total_votes INTEGER DEFAULT 0 CHECK (total_votes >= 0),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT beatmaps_source_identity_check CHECK (
@@ -57,8 +57,10 @@ CREATE TABLE IF NOT EXISTS votes (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     beatmap_id INTEGER NOT NULL REFERENCES beatmaps(id) ON DELETE CASCADE,
-    dan_level VARCHAR(3) NOT NULL,
-    tier VARCHAR(4) NOT NULL,
+    dan_level VARCHAR(3) NOT NULL CHECK (
+        dan_level IN ('1','2','3','4','5','6','7','8','9','10','α','β','γ','δ','ε','ζ','η')
+    ),
+    tier VARCHAR(4) NOT NULL CHECK (tier IN ('low','mid','high')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, beatmap_id)
@@ -80,12 +82,12 @@ CREATE TABLE IF NOT EXISTS overlay_auth_sessions (
 
 CREATE INDEX idx_overlay_auth_sessions_expires ON overlay_auth_sessions(expires_at);
 
--- ====== RLS: Disable for all tables ======
--- Auth is handled at the API route level (custom JWT), not via Supabase RLS
-ALTER TABLE users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE beatmaps DISABLE ROW LEVEL SECURITY;
-ALTER TABLE votes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE overlay_auth_sessions DISABLE ROW LEVEL SECURITY;
+-- Auth is handled by server-side API routes using the service role. Enabling
+-- RLS without public policies prevents direct anon/authenticated REST access.
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beatmaps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE overlay_auth_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Local-to-official promotions are performed by the transactional
 -- promote_local_beatmap function in the Supabase migrations.
@@ -104,7 +106,7 @@ CREATE TABLE IF NOT EXISTS beatmap_promotion_audits (
     duplicate_votes INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-ALTER TABLE beatmap_promotion_audits DISABLE ROW LEVEL SECURITY;
+ALTER TABLE beatmap_promotion_audits ENABLE ROW LEVEL SECURITY;
 
 -- Trigger function: update beatmaps.total_votes when votes change
 CREATE OR REPLACE FUNCTION update_beatmap_total_votes()

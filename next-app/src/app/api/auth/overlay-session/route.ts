@@ -84,5 +84,14 @@ export async function GET(request: NextRequest) {
     return json(request, { token: null });
   }
 
+  const { error: deleteError } = await getSupabaseAdmin()
+    .from("overlay_auth_sessions")
+    .delete()
+    .eq("installation_hash", hashInstallationId(installationId));
+  if (deleteError) {
+    console.error("Overlay auth consume failed:", deleteError);
+    return json(request, { error: "Failed to consume overlay login" }, 500);
+  }
+
   return json(request, { token: data.token, expires_at: data.expires_at });
 }

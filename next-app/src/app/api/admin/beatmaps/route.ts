@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, extractCookieToken } from "@/lib/auth";
+import { extractCookieToken } from "@/lib/auth";
+import { verifyAdminToken } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -9,8 +10,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await verifyToken(token);
-  if (!payload || !payload.is_admin) {
+  const payload = await verifyAdminToken(token);
+  if (!payload) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 

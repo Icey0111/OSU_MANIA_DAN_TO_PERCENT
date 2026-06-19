@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractCookieToken, verifyToken } from "@/lib/auth";
+import { extractCookieToken } from "@/lib/auth";
+import { verifyAdminToken } from "@/lib/admin-auth";
 import { BEATMAP_SELECT, BeatmapRecord, buildVoteResults } from "@/lib/beatmaps";
 import { getSupabaseAdmin } from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { beatmapId: string } }
+  { params }: { params: Promise<{ beatmapId: string }> }
 ) {
   const token = extractCookieToken(request);
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = await verifyToken(token);
-  if (!payload?.is_admin) {
+  const payload = await verifyAdminToken(token);
+  if (!payload) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const internalId = Number(params.beatmapId);
+  const { beatmapId } = await params;
+  const internalId = Number(beatmapId);
   if (!Number.isSafeInteger(internalId) || internalId <= 0) {
     return NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 });
   }
@@ -44,16 +46,17 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { beatmapId: string } }
+  { params }: { params: Promise<{ beatmapId: string }> }
 ) {
   const token = extractCookieToken(request);
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = await verifyToken(token);
-  if (!payload?.is_admin) {
+  const payload = await verifyAdminToken(token);
+  if (!payload) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const internalId = Number(params.beatmapId);
+  const { beatmapId } = await params;
+  const internalId = Number(beatmapId);
   if (!Number.isSafeInteger(internalId) || internalId <= 0) {
     return NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 });
   }

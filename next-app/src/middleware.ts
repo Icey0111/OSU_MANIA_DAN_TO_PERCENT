@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { JwtPayload, verifyToken } from "@/lib/auth";
 
 const CORS_ORIGINS = [
   "http://127.0.0.1:24050",
@@ -16,6 +16,33 @@ function addCorsHeaders(response: NextResponse, origin: string | null): NextResp
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   response.headers.set("Access-Control-Max-Age", "86400");
   return response;
+}
+
+async function isCurrentAdmin(payload: JwtPayload): Promise<boolean> {
+  if (!payload.is_admin) return false;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+
+  try {
+    const response = await fetch(
+      `${url}/rest/v1/users?id=eq.${payload.sub}&select=osu_id,is_admin`,
+      {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        cache: "no-store",
+      }
+    );
+    if (!response.ok) return false;
+    const users = (await response.json()) as Array<{ osu_id: number; is_admin: boolean }>;
+    return users.length === 1 && users[0].is_admin && users[0].osu_id === payload.osu_id;
+  } catch {
+    return false;
+  }
+}
+
+async function hasCurrentAdminAccess(token: string): Promise<boolean> {
+  const payload = await verifyToken(token);
+  return Boolean(payload && await isCurrentAdmin(payload));
 }
 
 export async function middleware(request: NextRequest) {
@@ -38,8 +65,7 @@ export async function middleware(request: NextRequest) {
       if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      const payload = await verifyToken(token);
-      if (!payload || !payload.is_admin) {
+      if (!(await hasCurrentAdminAccess(token))) {
         return NextResponse.json({ error: "Admin access required" }, { status: 403 });
       }
     }
@@ -57,8 +83,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const payload = await verifyToken(token);
-    if (!payload || !payload.is_admin) {
+    if (!(await hasCurrentAdminAccess(token))) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }

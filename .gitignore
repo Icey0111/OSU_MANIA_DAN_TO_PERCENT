@@ -6,5 +6,6 @@ node_modules/
 env.txt
 *.log
 .vercel
+.vercel-tmp/
 .qoder/
 release.zip

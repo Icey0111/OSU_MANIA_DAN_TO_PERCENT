@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, extractCookieToken } from "@/lib/auth";
+import { extractCookieToken } from "@/lib/auth";
+import { verifyAdminToken } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/db";
 
 interface BeatmapJoined {
@@ -28,6 +29,12 @@ interface VoteRow {
   users: UserJoined;
 }
 
+function csvCell(value: unknown): string {
+  let text = String(value ?? "");
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
 export async function GET(request: NextRequest) {
   // Authenticate via cookie
   const token = extractCookieToken(request);
@@ -35,8 +42,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await verifyToken(token);
-  if (!payload || !payload.is_admin) {
+  const payload = await verifyAdminToken(token);
+  if (!payload) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
@@ -82,32 +89,32 @@ export async function GET(request: NextRequest) {
     "Voted At",
   ];
 
-  const csvRows = [headers.join(",")];
+  const csvRows = [headers.map(csvCell).join(",")];
 
   for (const row of (data || []) as unknown as VoteRow[]) {
     const beatmap = row.beatmaps;
     const user = row.users;
     const csvRow = [
-      row.id,
-      beatmap.source_type,
-      beatmap.osu_beatmap_id ?? "",
-      beatmap.beatmapset_id ?? "",
-      beatmap.file_checksum ?? "",
-      `"${beatmap.artist.replace(/"/g, '""')}"`,
-      `"${beatmap.title.replace(/"/g, '""')}"`,
-      `"${beatmap.version.replace(/"/g, '""')}"`,
-      `"${beatmap.creator.replace(/"/g, '""')}"`,
-      beatmap.total_votes,
-      row.dan_level,
-      row.tier,
-      user.osu_id,
-      `"${user.osu_username}"`,
-      row.created_at,
+      csvCell(row.id),
+      csvCell(beatmap.source_type),
+      csvCell(beatmap.osu_beatmap_id ?? ""),
+      csvCell(beatmap.beatmapset_id ?? ""),
+      csvCell(beatmap.file_checksum ?? ""),
+      csvCell(beatmap.artist),
+      csvCell(beatmap.title),
+      csvCell(beatmap.version),
+      csvCell(beatmap.creator),
+      csvCell(beatmap.total_votes),
+      csvCell(row.dan_level),
+      csvCell(row.tier),
+      csvCell(user.osu_id),
+      csvCell(user.osu_username),
+      csvCell(row.created_at),
     ];
     csvRows.push(csvRow.join(","));
   }
 
-  const csv = csvRows.join("\n");
+  const csv = `\uFEFF${csvRows.join("\r\n")}`;
 
   return new Response(csv, {
     status: 200,

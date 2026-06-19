@@ -1,102 +1,115 @@
 @echo off
-chcp 65001 >nul
-title osu!mania Dan Voting - 安装
+setlocal EnableExtensions
+title osu!mania Dan Voting Installer
 
 echo ================================================
-echo   osu!mania Dan Voting 覆盖层安装程序
+echo   osu!mania Dan Voting Overlay Installer
 echo ================================================
 echo.
 
-REM 检查 tosu 是否在运行
 tasklist /fi "imagename eq tosu.exe" 2>nul | find /i "tosu.exe" >nul
 if errorlevel 1 (
-    echo [警告] 未检测到 tosu 在运行
-    echo 请确保 tosu 已启动，否则覆盖层不会加载。
+    echo [WARNING] tosu does not appear to be running.
+    echo Start tosu before opening the installed overlay.
     echo.
 )
 
-REM 自动检测 tosu 路径
 set "TOSU_PATH="
-
-REM 尝试从注册表或常见路径检测
-for %%d in (
+for %%D in (
     "%APPDATA%\tosu"
     "%LOCALAPPDATA%\tosu"
     "%USERPROFILE%\tosu"
     "D:\tosu"
     "C:\tosu"
 ) do (
-    if exist "%%~d\tosu.exe" (
-        set "TOSU_PATH=%%~d"
+    if exist "%%~D\tosu.exe" (
+        set "TOSU_PATH=%%~D"
         goto :found_tosu
     )
 )
 
-REM 未自动检测到，让用户输入
-echo 未自动检测到 tosu 安装目录。
-echo 请输入 tosu 的安装路径（包含 tosu.exe 的文件夹）:
-echo 例如: D:\tosu  或  C:\Users\你的用户名\tosu
+echo tosu was not detected automatically.
+echo Enter the folder that contains tosu.exe.
+echo Example: D:\tosu
 echo.
-set /p TOSU_PATH="tosu 路径: "
+set /p TOSU_PATH="tosu path: "
 goto :check_path
 
 :found_tosu
-echo 检测到 tosu: %TOSU_PATH%
-echo （按 Enter 确认，或输入新路径修改）
-set /p NEW_PATH="tosu 路径 [%TOSU_PATH%]: "
-if not "%NEW_PATH%"=="" set "TOSU_PATH=%NEW_PATH%"
+echo Detected tosu: %TOSU_PATH%
+set "NEW_PATH="
+set /p NEW_PATH="Press Enter to accept, or enter another path: "
+if defined NEW_PATH set "TOSU_PATH=%NEW_PATH%"
 
 :check_path
 if not exist "%TOSU_PATH%\tosu.exe" (
-    echo [错误] 在 %TOSU_PATH% 中未找到 tosu.exe
-    echo 请确认路径正确后重试。
+    echo [ERROR] tosu.exe was not found in: %TOSU_PATH%
     pause
     exit /b 1
 )
 
-echo.
-echo 正在安装覆盖层...
-
-REM 创建目标目录
 set "DEST=%TOSU_PATH%\static\dan-voting"
 if not exist "%DEST%" mkdir "%DEST%"
+if errorlevel 1 (
+    echo [ERROR] Failed to create: %DEST%
+    pause
+    exit /b 1
+)
 
-REM 生成唯一安装 ID (64位十六进制 = 256-bit)
 set "INSTALL_FILE=%DEST%\.installation-id"
+set "DAN_VOTING_INSTALL_FILE=%INSTALL_FILE%"
 set "NEED_NEW_ID=1"
 if exist "%INSTALL_FILE%" (
-    set /p OLD_ID=<"%INSTALL_FILE%"
-    echo %OLD_ID% | findstr /r "^[a-f0-9]\{64\}$" >nul
+    powershell -NoProfile -Command "$id = (Get-Content -LiteralPath $env:DAN_VOTING_INSTALL_FILE -Raw).Trim(); if ($id -notmatch '^[a-f0-9]{64}$') { exit 1 }" >nul 2>&1
     if not errorlevel 1 set "NEED_NEW_ID=0"
 )
+
 if "%NEED_NEW_ID%"=="1" (
-    REM 使用 PowerShell 生成随机 hex
-    powershell -NoProfile -Command "$bytes = New-Object byte[] 32; (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes); [System.BitConverter]::ToString($bytes).Replace('-','').ToLower()" > "%TEMP%\dan_voting_id.tmp"
-    set /p NEW_ID=<"%TEMP%\dan_voting_id.tmp"
-    echo %NEW_ID%> "%INSTALL_FILE%"
-    del "%TEMP%\dan_voting_id.tmp" 2>nul
+    powershell -NoProfile -Command "$bytes = New-Object byte[] 32; (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes); $id = [System.BitConverter]::ToString($bytes).Replace('-','').ToLower(); [System.IO.File]::WriteAllText($env:DAN_VOTING_INSTALL_FILE, $id)"
+    if errorlevel 1 (
+        echo [ERROR] Failed to generate the installation ID.
+        pause
+        exit /b 1
+    )
 )
 
-REM 读取安装 ID
 set /p INSTALL_ID=<"%INSTALL_FILE%"
+set "DAN_VOTING_INSTALL_ID=%INSTALL_ID%"
+powershell -NoProfile -Command "if ($env:DAN_VOTING_INSTALL_ID -notmatch '^[a-f0-9]{64}$') { exit 1 }" >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] The installation ID is invalid.
+    pause
+    exit /b 1
+)
 
-REM 复制 HTML 并替换安装 ID 占位符
-powershell -NoProfile -Command "$html = Get-Content '%~dp0dan-voting\index.html' -Raw -Encoding UTF8; $html = $html.Replace('__DAN_VOTING_INSTALLATION_ID__', '%INSTALL_ID%'); Set-Content '%DEST%\index.html' -Value $html -Encoding UTF8 -NoNewline"
+set "DAN_VOTING_SOURCE_HTML=%~dp0dan-voting\index.html"
+set "DAN_VOTING_DEST_HTML=%DEST%\index.html"
+powershell -NoProfile -Command "$html = Get-Content -LiteralPath $env:DAN_VOTING_SOURCE_HTML -Raw -Encoding UTF8; $html = $html.Replace('__DAN_VOTING_INSTALLATION_ID__', $env:DAN_VOTING_INSTALL_ID); Set-Content -LiteralPath $env:DAN_VOTING_DEST_HTML -Value $html -Encoding UTF8 -NoNewline"
+if errorlevel 1 (
+    echo [ERROR] Failed to write the overlay HTML.
+    pause
+    exit /b 1
+)
 
-REM 复制图标等资源目录
-if exist "%~dp0dan-voting\icons" xcopy /E /I /Y "%~dp0dan-voting\icons" "%DEST%\icons" >nul
+if exist "%~dp0dan-voting\icons" (
+    xcopy /E /I /Y "%~dp0dan-voting\icons" "%DEST%\icons" >nul
+    if errorlevel 1 (
+        echo [ERROR] Failed to copy rank icons.
+        pause
+        exit /b 1
+    )
+)
 
-REM 复制 README（如果有）
 if exist "%~dp0README.txt" copy /Y "%~dp0README.txt" "%DEST%\" >nul 2>&1
+if exist "%~dp0PRIVACY.txt" copy /Y "%~dp0PRIVACY.txt" "%DEST%\" >nul 2>&1
 
 echo.
 echo ================================================
-echo   安装完成！
+echo   Installation complete
 echo.
-echo   覆盖层 URL: http://localhost:24050/dan-voting/
-echo   （在 OBS 中添加"浏览器"源，粘贴上面地址）
+echo   Overlay URL: http://localhost:24050/dan-voting/
 echo ================================================
 echo.
-
-echo 按任意键退出...
-pause >nul
+pause
+endlocal
+exit /b 0

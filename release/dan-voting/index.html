@@ -516,7 +516,7 @@ function render() {
   // Header
   let headerRight = '';
   if (s.user) {
-    headerRight = `<span class="user-info">${s.user.username} | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
+    headerRight = `<span class="user-info">${esc(s.user.username)} | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
   } else if (s.token) {
     headerRight = `<span class="user-info">Loading... | <a href="#" onclick="logout();return false" style="color:#ff66aa">logout</a></span>`;
   } else if (IS_INGAME_RENDERER) {
@@ -1001,7 +1001,7 @@ function login() {
   const height = 700;
   const left = (screen.width - width) / 2;
   const top = (screen.height - height) / 2;
-  const url = `${API_BASE}/api/auth/login?redirect=overlay`;
+  const url = `${API_BASE}/api/auth/login?redirect=overlay&opener_origin=${encodeURIComponent(location.origin)}`;
 
   loginWindow = window.open(
     url,

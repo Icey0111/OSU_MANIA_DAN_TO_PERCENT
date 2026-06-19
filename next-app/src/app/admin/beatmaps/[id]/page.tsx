@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { DAN_LABELS, DAN_LEVELS } from "@/lib/validation";
 
@@ -506,9 +507,12 @@ export default function BeatmapDetailPage() {
                       className="flex items-center gap-3 hover:text-pink-400 transition-colors"
                     >
                       {v.avatar_url ? (
-                        <img
+                        <Image
                           src={v.avatar_url}
                           alt=""
+                          width={24}
+                          height={24}
+                          unoptimized
                           className="w-6 h-6 rounded-full"
                         />
                       ) : (

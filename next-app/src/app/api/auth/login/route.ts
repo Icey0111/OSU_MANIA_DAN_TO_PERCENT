@@ -3,6 +3,12 @@ import { buildAuthUrl, generatePKCE } from "@/lib/osu";
 import { handleCors, applyCorsHeaders } from "@/lib/cors";
 import crypto from "crypto";
 
+const OVERLAY_ORIGINS = new Set([
+  "http://127.0.0.1:24050",
+  "http://localhost:24050",
+]);
+const secureCookie = process.env.NODE_ENV === "production";
+
 export async function GET(request: NextRequest) {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
@@ -11,6 +17,19 @@ export async function GET(request: NextRequest) {
     // Determine redirect type from query param
     const { searchParams } = new URL(request.url);
     const redirect = searchParams.get("redirect") || "admin";
+    if (redirect !== "admin" && redirect !== "overlay") {
+      return applyCorsHeaders(
+        NextResponse.json({ error: "Invalid login redirect" }, { status: 400 }),
+        request
+      );
+    }
+    const openerOrigin = searchParams.get("opener_origin") || "";
+    if (redirect === "overlay" && !OVERLAY_ORIGINS.has(openerOrigin)) {
+      return applyCorsHeaders(
+        NextResponse.json({ error: "Invalid overlay origin" }, { status: 400 }),
+        request
+      );
+    }
 
     // Generate PKCE and state (Node.js native crypto)
     const { verifier, challenge } = await generatePKCE();
@@ -20,11 +39,8 @@ export async function GET(request: NextRequest) {
       .replace(/\//g, "_")
       .replace(/=/g, "");
 
-    // Store redirect info in state
-    const state = `${stateStr}:${redirect}`;
-
     // Build osu! OAuth URL
-    const authUrl = buildAuthUrl(challenge, state);
+    const authUrl = buildAuthUrl(challenge, stateStr);
 
     // Redirect to osu! OAuth, set cookies directly on response
     const response = NextResponse.redirect(authUrl);
@@ -32,20 +48,38 @@ export async function GET(request: NextRequest) {
       path: "/api/auth/callback",
       httpOnly: true,
       sameSite: "lax",
+      secure: secureCookie,
+      maxAge: 600,
+    });
+    response.cookies.set("oauth_state", stateStr, {
+      path: "/api/auth/callback",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: secureCookie,
       maxAge: 600,
     });
     response.cookies.set("oauth_redirect", redirect, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
+      secure: secureCookie,
       maxAge: 600,
     });
+    if (redirect === "overlay") {
+      response.cookies.set("oauth_opener_origin", openerOrigin, {
+        path: "/api/auth/callback",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: secureCookie,
+        maxAge: 600,
+      });
+    }
 
     return applyCorsHeaders(response);
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
+  } catch (error) {
+    console.error("OAuth login initialization failed:", error);
     return applyCorsHeaders(
-      Response.json({ error: message }, { status: 500 })
+      Response.json({ error: "Failed to initialize osu! login" }, { status: 500 })
     );
   }
 }

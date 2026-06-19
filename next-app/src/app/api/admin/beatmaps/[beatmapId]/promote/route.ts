@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractCookieToken, verifyToken } from "@/lib/auth";
+import { extractCookieToken } from "@/lib/auth";
+import { verifyAdminToken } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/db";
 import { getOsuBeatmap, OsuApiError } from "@/lib/osu";
 
@@ -10,8 +11,7 @@ interface PromotionBody {
 async function authorize(request: NextRequest) {
   const token = extractCookieToken(request);
   if (!token) return null;
-  const payload = await verifyToken(token);
-  return payload?.is_admin ? payload : null;
+  return verifyAdminToken(token);
 }
 
 function parseIds(beatmapId: string, body: PromotionBody) {
@@ -78,7 +78,7 @@ function osuErrorResponse(error: unknown) {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { beatmapId: string } }
+  { params }: { params: Promise<{ beatmapId: string }> }
 ) {
   const admin = await authorize(request);
   if (!admin) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -89,7 +89,8 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const ids = parseIds(params.beatmapId, body);
+  const { beatmapId } = await params;
+  const ids = parseIds(beatmapId, body);
   if (!ids) return NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 });
 
   try {
@@ -105,7 +106,7 @@ export async function POST(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { beatmapId: string } }
+  { params }: { params: Promise<{ beatmapId: string }> }
 ) {
   const admin = await authorize(request);
   if (!admin) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -116,7 +117,8 @@ export async function PUT(
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const ids = parseIds(params.beatmapId, body);
+  const { beatmapId } = await params;
+  const ids = parseIds(beatmapId, body);
   if (!ids) return NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 });
 
   try {

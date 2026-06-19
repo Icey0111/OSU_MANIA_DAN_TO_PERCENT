@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractCookieToken, verifyToken } from "@/lib/auth";
+import { extractCookieToken } from "@/lib/auth";
+import { verifyAdminToken } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/db";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { beatmapId: string; voteId: string } }
+  { params }: { params: Promise<{ beatmapId: string; voteId: string }> }
 ) {
   const token = extractCookieToken(request);
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = await verifyToken(token);
-  if (!payload?.is_admin) {
+  const payload = await verifyAdminToken(token);
+  if (!payload) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const beatmapId = Number(params.beatmapId);
-  const voteId = Number(params.voteId);
+  const resolvedParams = await params;
+  const beatmapId = Number(resolvedParams.beatmapId);
+  const voteId = Number(resolvedParams.voteId);
   if (
     !Number.isSafeInteger(beatmapId) ||
     beatmapId <= 0 ||
@@ -73,4 +75,3 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, total_votes: count || 0 });
 }
-

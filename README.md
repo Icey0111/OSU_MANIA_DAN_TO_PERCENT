@@ -1,5 +1,7 @@
 # osu!mania Dan Voting
 
+> Independent community project. Not affiliated with or endorsed by osu! or ppy Pty Ltd. See [Privacy Notice](PRIVACY.md).
+
 osu!mania Dan Voting 是一个基于 tosu 的游戏内段位投票覆盖层。它会自动读取当前 osu!mania 谱面，让已登录的玩家按照 DDMythical Reform Dan 4K 体系提交难度评价，并实时显示社区投票分布。
 
 ## 功能
@@ -116,7 +118,7 @@ schema.sql            数据库结构
 
 | 技术 | 用途 |
 |---|---|
-| Next.js 14 / React 18 | Web 页面、API 和管理后台 |
+| Next.js 15 / React 18 | Web 页面、API 和管理后台 |
 | TypeScript | 服务端和管理界面的类型安全 |
 | 原生 HTML / CSS / JavaScript | 轻量级 tosu 覆盖层 |
 | tosu WebSocket | 获取 osu! 当前谱面状态 |

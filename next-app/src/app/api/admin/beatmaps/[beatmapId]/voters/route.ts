@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, extractCookieToken } from "@/lib/auth";
+import { extractCookieToken } from "@/lib/auth";
+import { verifyAdminToken } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/db";
 import { DAN_ORDER, DAN_LABELS } from "@/lib/validation";
 
@@ -18,7 +19,7 @@ interface VoterRow {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { beatmapId: string } }
+  { params }: { params: Promise<{ beatmapId: string }> }
 ) {
   // Authenticate via cookie
   const token = extractCookieToken(request);
@@ -26,12 +27,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await verifyToken(token);
-  if (!payload || !payload.is_admin) {
+  const payload = await verifyAdminToken(token);
+  if (!payload) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const beatmapId = parseInt(params.beatmapId, 10);
+  const { beatmapId: rawBeatmapId } = await params;
+  const beatmapId = parseInt(rawBeatmapId, 10);
   if (isNaN(beatmapId)) {
     return NextResponse.json({ error: "Invalid beatmap ID" }, { status: 400 });
   }

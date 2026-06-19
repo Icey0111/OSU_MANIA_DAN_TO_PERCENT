@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 
 interface UserData {
   user_id: number;
@@ -128,9 +129,12 @@ export default function AdminUsersPage() {
                       className="flex items-center gap-3 hover:text-pink-400 transition-colors"
                     >
                       {u.avatar_url ? (
-                        <img
+                        <Image
                           src={u.avatar_url}
                           alt=""
+                          width={24}
+                          height={24}
+                          unoptimized
                           className="w-6 h-6 rounded-full"
                         />
                       ) : (

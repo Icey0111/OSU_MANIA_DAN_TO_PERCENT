@@ -1,0 +1,15 @@
+osu!mania Dan Voting - Privacy Summary
+======================================
+
+This independent community project stores your osu! user ID, username, avatar
+URL, and submitted votes. For local beatmaps it stores an MD5 checksum and
+basic beatmap metadata.
+
+It does not upload .osu files, audio, backgrounds, local file paths, osu!
+passwords, or osu! OAuth access tokens. Individual voter details are available
+only to authorized administrators for moderation and export.
+
+Full notice:
+https://github.com/Icey0111/OSU_MANIA_DAN_TO_PERCENT/blob/main/PRIVACY.md
+
+This project is not affiliated with or endorsed by osu! or ppy Pty Ltd.
